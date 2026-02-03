@@ -1,0 +1,80 @@
+{
+  "MLN-001": {
+    "poster": "https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "sources": [
+      {
+        "type": "hls",
+        "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+      },
+      {
+        "type": "mp4",
+        "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+      }
+    ],
+    "captions": [
+      {
+        "lang": "en",
+        "label": "English",
+        "url": "https://cdn.jsdelivr.net/gh/Animosity/vtt-samples@master/advanced-captions-webvtt-example.vtt",
+        "default": true
+      }
+    ]
+  },
+  "1": {
+    "poster": "https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "sources": [
+      {
+        "type": "hls",
+        "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+      },
+      {
+        "type": "mp4",
+        "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+      }
+    ],
+    "captions": [
+      {
+        "lang": "en",
+        "label": "English",
+        "url": "https://cdn.jsdelivr.net/gh/Animosity/vtt-samples@master/advanced-captions-webvtt-example.vtt",
+        "default": true
+      }
+    ]
+  },
+  "2": {
+    "poster": "https://images.pexels.com/photos/5605118/pexels-photo-5605118.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "sources": [
+      {
+        "type": "hls",
+        "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+      }
+    ]
+  },
+  "3": {
+    "poster": "https://images.pexels.com/photos/5876695/pexels-photo-5876695.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "sources": [
+      {
+        "type": "mp4",
+        "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
+      }
+    ]
+  },
+  "4": {
+    "poster": "https://images.pexels.com/photos/6069563/pexels-photo-6069563.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "sources": [
+      {
+        "type": "hls",
+        "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+      }
+    ]
+  },
+  "5": {
+    "poster": "https://images.pexels.com/photos/5691603/pexels-photo-5691603.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "sources": [
+      {
+        "type": "mp4",
+        "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+      }
+    ]
+  }
+}
