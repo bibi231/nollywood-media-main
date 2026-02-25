@@ -55,7 +55,7 @@ interface QueryRequest {
 function sanitizeIdentifier(name: string): string {
     // Only allow alphanumeric, underscore — prevents SQL injection in identifiers
     if (!name) return '';
-    return name.replace(/[^a-zA-Z0-9_]/g, '');
+    return String(name).replace(/[^a-zA-Z0-9_]/g, '');
 }
 
 function buildWhereClause(filters: QueryFilter[], startParam: number = 1): { clause: string; params: any[] } {
@@ -146,6 +146,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         let body: QueryRequest = req.body;
+        if (typeof body === 'string') {
+            try { body = JSON.parse(body); } catch { /* ignore */ }
+        }
+
+        const { table, operation, columns, filters, data, order, limit, offset, upsertConflict, single, count, head } = body || {};
+
+        if (!table) {
+            return res.status(400).json({ data: null, error: { message: 'Missing table name' } });
+        }
+
+        const safeTable = sanitizeIdentifier(table);
+        const isAllowed = ALLOWED_TABLES.includes(safeTable);
+
+        console.log('DEBUG_QUERY:', {
+            body_type: typeof body,
+            raw_table: table,
+            safe_table: safeTable,
+            is_allowed: isAllowed,
+            allowed_list_len: ALLOWED_TABLES.length
+        });
+
+        if (!isAllowed) {
+            return res.status(400).json({
+                data: null,
+                error: {
+                    message: `Table '${table}' is not allowed (sanitized: '${safeTable}', list covers: ${ALLOWED_TABLES.slice(0, 3).join(', ')}...)`
+                }
+            });
+        }
+
+        // Validate auth
+        const user = getUserFromRequest(req);
+        const authRequired = AUTH_REQUIRED_TABLES.includes(safeTable) && !PUBLIC_READ_TABLES.includes(safeTable);
+
         if (authRequired && !user && operation !== 'select') {
             return res.status(401).json({ data: null, error: { message: 'Authentication required' } });
         }
