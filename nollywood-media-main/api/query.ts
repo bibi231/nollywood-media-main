@@ -7,6 +7,8 @@ import { getUserFromRequest, corsHeaders } from './_lib/auth.js';
  * 
  * POST /api/query
  * Body: { table, operation, columns, filters, data, order, limit, offset, upsertConflict, single }
+ * 
+ * Deployment Trigger: Final API Fix 1
  */
 
 // Tables the frontend is allowed to query
