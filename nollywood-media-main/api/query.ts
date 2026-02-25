@@ -159,20 +159,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const safeTable = sanitizeIdentifier(table);
         const isAllowed = ALLOWED_TABLES.includes(safeTable);
 
-        console.log('DEBUG_QUERY:', {
-            body_type: typeof body,
-            raw_table: table,
-            safe_table: safeTable,
-            is_allowed: isAllowed,
-            allowed_list_len: ALLOWED_TABLES.length
-        });
+        console.log('DEBUG_QUERY:', { table, safeTable, isAllowed, op: operation });
 
         if (!isAllowed) {
             return res.status(400).json({
                 data: null,
-                error: {
-                    message: `Table '${table}' is not allowed (sanitized: '${safeTable}', list covers: ${ALLOWED_TABLES.slice(0, 3).join(', ')}...)`
-                }
+                error: { message: `Table '${table}' is not allowed` }
             });
         }
 
