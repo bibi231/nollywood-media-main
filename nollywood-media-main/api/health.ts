@@ -1,5 +1,8 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-export default function handler(req: VercelRequest, res: VercelResponse) {
-    return res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+export default function handler(req: any, res: any) {
+    res.status(200).json({
+        status: 'ok',
+        message: 'Minimal health check working',
+        time: new Date().toISOString(),
+        env_db: !!process.env.NEON_DATABASE_URL
+    });
 }
