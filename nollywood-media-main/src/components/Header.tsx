@@ -111,13 +111,13 @@ export function Header({ onMenuClick }: HeaderProps) {
             >
               <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
             </button>
-            <Link to="/" className="flex items-center gap-2">
-              <Film className="w-6 h-6 text-red-600" />
-              <span className="text-xl font-semibold text-gray-900">NaijaMation</span>
+            <Link to="/" className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <Film className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
+              <span className="text-lg sm:text-xl font-semibold text-gray-900 truncate max-w-[120px] sm:max-w-none">NaijaMation</span>
             </Link>
           </div>
 
-          <div className="flex-1 max-w-2xl mx-4">
+          <div className="flex-1 max-w-2xl mx-4 hidden sm:block">
             <form onSubmit={handleSearch} className="flex items-center">
               <div className="flex w-full">
                 <input
@@ -137,7 +137,10 @@ export function Header({ onMenuClick }: HeaderProps) {
             </form>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <button className="p-2 hover:bg-gray-100 rounded-full sm:hidden" title="Search">
+              <Search className="w-5 h-5 text-gray-700" />
+            </button>
             {user ? (
               <>
                 {isAdmin && (

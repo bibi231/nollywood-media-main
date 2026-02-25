@@ -1,4 +1,5 @@
-import * as jwt from 'jsonwebtoken';
+import pkg from 'jsonwebtoken';
+const { sign, verify } = pkg;
 import type { VercelRequest } from '@vercel/node';
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -16,12 +17,12 @@ export interface JWTPayload {
 }
 
 export function signToken(payload: JWTPayload): string {
-    return jwt.sign(payload, SECRET, { expiresIn: '7d' });
+    return sign(payload, SECRET, { expiresIn: '7d' });
 }
 
 export function verifyToken(token: string): JWTPayload | null {
     try {
-        return jwt.verify(token, SECRET) as JWTPayload;
+        return verify(token, SECRET) as JWTPayload;
     } catch {
         return null;
     }
