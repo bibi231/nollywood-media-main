@@ -1,8 +1,12 @@
 import { X, Eye, EyeOff } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rateLimiter';
+
+// Google Client ID — set this in your Google Cloud Console
+// For now we'll use a placeholder; replace with your real client ID
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -22,26 +26,75 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
-  // Social login handler
-  const handleSocialSignIn = async (provider: 'google' | 'apple' | 'facebook' | 'azure' | 'twitter') => {
+  // Google Sign-In handler
+  const handleGoogleCallback = useCallback(async (response: any) => {
     setError(null);
     setLoading(true);
     try {
-      let supabaseProvider = provider;
-      if (provider === 'azure') supabaseProvider = 'azure';
-      if (provider === 'twitter') supabaseProvider = 'twitter';
-      if (provider === 'x') supabaseProvider = 'twitter';
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: supabaseProvider,
-        options: {
-          redirectTo: window.location.origin + '/auth/callback',
-        },
-      });
-      if (error) throw error;
+      const result = await (supabase.auth as any).signInWithGoogle(response.credential);
+      if (result.error) {
+        throw new Error(result.error.message || 'Google sign-in failed');
+      }
+      setMessage('✅ Signed in with Google!');
+      onClose();
+      // Check if admin
+      if (result.data?.user) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', result.data.user.id)
+          .maybeSingle();
+        if (roleData?.role === 'admin') navigate('/admin');
+      }
     } catch (err: any) {
-      setError(err?.message || 'Social login failed');
+      setError(err?.message || 'Google sign-in failed');
     } finally {
       setLoading(false);
+    }
+  }, [onClose, navigate]);
+
+  // Load Google Identity Services script
+  useEffect(() => {
+    if (!isOpen || !GOOGLE_CLIENT_ID) return;
+
+    const scriptId = 'google-gis-script';
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+
+    // Initialize Google Sign-In when script loads
+    const initGoogle = () => {
+      if ((window as any).google?.accounts?.id) {
+        (window as any).google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCallback,
+        });
+      }
+    };
+
+    // Check if already loaded
+    if ((window as any).google?.accounts?.id) {
+      initGoogle();
+    } else {
+      const script = document.getElementById(scriptId);
+      script?.addEventListener('load', initGoogle);
+    }
+  }, [isOpen, handleGoogleCallback]);
+
+  const handleGoogleSignIn = () => {
+    if (!GOOGLE_CLIENT_ID) {
+      setError('Google Sign-In is not configured yet. Please use email/password.');
+      return;
+    }
+    if ((window as any).google?.accounts?.id) {
+      (window as any).google.accounts.id.prompt();
+    } else {
+      setError('Google Sign-In is loading, please try again.');
     }
   };
 
@@ -297,67 +350,21 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
 
           {mode !== 'reset' && (
             <>
-              {/* Social login buttons */}
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <button
-                  type="button"
-                  onClick={() => handleSocialSignIn('google')}
-                  disabled={loading}
-                  className="flex items-center justify-center gap-2 px-2 py-2 bg-white hover:bg-gray-50 text-gray-900 rounded-lg font-medium transition-colors disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                  </svg>
-                  Google
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSocialSignIn('facebook')}
-                  disabled={loading}
-                  className="flex items-center justify-center gap-2 px-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M22.675 0h-21.35C.595 0 0 .592 0 1.326v21.348C0 23.408.595 24 1.325 24h11.495v-9.294H9.692v-3.622h3.128V8.413c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.797.143v3.24l-1.918.001c-1.504 0-1.797.715-1.797 1.763v2.313h3.587l-.467 3.622h-3.12V24h6.116C23.406 24 24 23.408 24 22.674V1.326C24 .592 23.406 0 22.675 0" />
-                  </svg>
-                  Facebook
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSocialSignIn('azure')}
-                  disabled={loading}
-                  className="flex items-center justify-center gap-2 px-2 py-2 bg-blue-800 hover:bg-blue-900 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M1.5 22.5l9.5-21 9.5 21h-19zm2.5-2h14l-7-15.5-7 15.5z" />
-                  </svg>
-                  Azure
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSocialSignIn('twitter')}
-                  disabled={loading}
-                  className="flex items-center justify-center gap-2 px-2 py-2 bg-black hover:bg-gray-900 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M23.954 4.569c-.885.389-1.83.654-2.825.775 1.014-.611 1.794-1.574 2.163-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-2.72 0-4.924 2.206-4.924 4.924 0 .39.045.765.127 1.124-4.09-.205-7.719-2.165-10.148-5.144-.424.729-.666 1.577-.666 2.476 0 1.708.87 3.216 2.188 4.099-.807-.026-1.566-.247-2.228-.616v.062c0 2.385 1.693 4.374 3.946 4.827-.413.111-.849.171-1.296.171-.317 0-.626-.03-.928-.086.627 1.956 2.444 3.377 4.6 3.417-1.68 1.318-3.809 2.105-6.102 2.105-.396 0-.787-.023-1.175-.069 2.179 1.397 4.768 2.213 7.557 2.213 9.054 0 14.002-7.496 14.002-13.986 0-.21 0-.423-.016-.634.962-.689 1.797-1.56 2.457-2.548z" />
-                  </svg>
-                  X (Twitter)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSocialSignIn('apple')}
-                  disabled={loading}
-                  className="flex items-center justify-center gap-2 px-2 py-2 bg-black hover:bg-gray-900 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-                  </svg>
-                  Apple
-                </button>
-              </div>
+              {/* Google Sign-In */}
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={loading}
+                className="flex items-center justify-center gap-3 w-full px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-900 rounded-lg font-medium transition-colors disabled:opacity-50 border border-gray-200"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                </svg>
+                Continue with Google
+              </button>
               <div className="relative mb-2">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-slate-700"></div>

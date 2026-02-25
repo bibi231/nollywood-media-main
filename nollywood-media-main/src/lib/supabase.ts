@@ -151,7 +151,15 @@ class QueryBuilder {
         }),
       });
 
-      const result = await response.json();
+      // Guard against non-JSON responses (e.g. Vercel HTML error pages)
+      const text = await response.text();
+      let result: any;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        console.error(`[API] Non-JSON response on ${this._table}:`, text.slice(0, 200));
+        return { data: null, error: { message: 'Server returned an invalid response. Check Vercel deployment settings.' } };
+      }
 
       if (!response.ok) {
         return { data: null, error: result.error || { message: 'Request failed' } };
@@ -273,7 +281,16 @@ const authClient = {
           display_name: opts.options?.data?.display_name,
         }),
       });
-      const result = await res.json();
+
+      // Guard against non-JSON responses
+      const text = await res.text();
+      let result: any;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        console.error('[Auth] Non-JSON signup response:', text.slice(0, 200));
+        return { data: { user: null, session: null }, error: { message: 'Server error — check Vercel deployment settings (Root Directory should be nollywood-media-main).' } };
+      }
 
       if (!res.ok || result.error) {
         return { data: { user: null, session: null }, error: { message: result.error || 'Sign up failed' } };
@@ -300,7 +317,16 @@ const authClient = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: opts.email, password: opts.password }),
       });
-      const result = await res.json();
+
+      // Guard against non-JSON responses
+      const text = await res.text();
+      let result: any;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        console.error('[Auth] Non-JSON login response:', text.slice(0, 200));
+        return { data: { user: null, session: null }, error: { message: 'Server error — check Vercel deployment settings (Root Directory should be nollywood-media-main).' } };
+      }
 
       if (!res.ok || result.error) {
         return { data: { user: null, session: null }, error: { message: result.error || 'Invalid email or password' } };
@@ -321,11 +347,46 @@ const authClient = {
   },
 
   async signInWithOAuth(_opts: any) {
-    // OAuth is not supported yet — will be added later with Auth.js
+    // Only Google OAuth is supported via signInWithGoogle()
     return {
       data: null,
-      error: { message: 'Social login is coming soon. Please use email/password for now.' },
+      error: { message: 'Please use the Google button or email/password to sign in.' },
     };
+  },
+
+  async signInWithGoogle(idToken: string) {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      const text = await res.text();
+      let result: any;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        console.error('[Auth] Non-JSON Google auth response:', text.slice(0, 200));
+        return { data: { user: null, session: null }, error: { message: 'Server error during Google sign-in.' } };
+      }
+
+      if (!res.ok || result.error) {
+        return { data: { user: null, session: null }, error: { message: result.error || 'Google sign-in failed' } };
+      }
+
+      const token = result.data.session?.access_token;
+      if (token) {
+        setToken(token);
+        cachedUser = result.data.user;
+        cachedSession = result.data.session;
+        notifyAuthListeners('SIGNED_IN', result.data.session);
+      }
+
+      return { data: result.data, error: null };
+    } catch (err: any) {
+      return { data: { user: null, session: null }, error: { message: err.message } };
+    }
   },
 
   async signOut() {
@@ -344,7 +405,18 @@ const authClient = {
       const res = await fetch(`${API_BASE}/api/auth/me`, {
         headers: { ...authHeaders() },
       });
-      const result = await res.json();
+
+      const text = await res.text();
+      let result: any;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        // Non-JSON response — API not deployed correctly
+        setToken(null);
+        cachedUser = null;
+        cachedSession = null;
+        return { data: { session: null }, error: null };
+      }
 
       if (!res.ok || !result.data?.session) {
         setToken(null);
