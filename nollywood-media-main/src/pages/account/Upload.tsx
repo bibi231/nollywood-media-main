@@ -30,7 +30,7 @@ export function Upload() {
 
   const categories = [
     'Film', 'Short Film', 'Series Episode', 'Documentary',
-    'Animation', 'Music Video', 'Tutorial', 'Other'
+    'Animation', 'Music Video', 'Audio Track', 'Podcast', 'Tutorial', 'Other'
   ];
 
   const handleDrag = (e: React.DragEvent) => {
@@ -49,14 +49,14 @@ export function Upload() {
     setDragActive(false);
 
     const files = Array.from(e.dataTransfer.files);
-    const videoFile = files.find(f => f.type.startsWith('video/'));
+    const selectedFile = files.find(f => f.type.startsWith('video/') || f.type.startsWith('audio/'));
 
-    if (videoFile) {
-      if (videoFile.size > 2147483648) {
-        setError('Video file must be less than 2GB');
+    if (selectedFile) {
+      if (selectedFile.size > 2147483648) {
+        setError('File must be less than 2GB');
         return;
       }
-      setVideoFile(videoFile);
+      setVideoFile(selectedFile);
     }
   };
 
@@ -64,11 +64,12 @@ export function Upload() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2147483648) {
-        setError('Video file must be less than 2GB');
+        setError('File must be less than 2GB');
         return;
       }
-      if (!file.type.startsWith('video/')) {
-        setError('Please select a valid video file');
+      const isAudio = formData.category === 'Audio Track' || formData.category === 'Podcast';
+      if (!file.type.startsWith('video/') && !file.type.startsWith('audio/')) {
+        setError('Please select a valid video or audio file');
         return;
       }
       setVideoFile(file);
@@ -123,19 +124,20 @@ export function Upload() {
     setUploadProgress(0);
 
     try {
-      const videoExt = videoFile.name.split('.').pop();
-      const videoFileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${videoExt}`;
+      const fileExt = videoFile.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const bucketName = (videoFile.type.startsWith('audio/')) ? 'audio-content' : 'user-content';
 
       setUploadProgress(10);
 
-      const { error: videoUploadError } = await supabase.storage
-        .from('user-content')
-        .upload(videoFileName, videoFile, {
+      const { data: uploadResult, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(fileName, videoFile, {
           cacheControl: '3600',
           upsert: false,
         });
 
-      if (videoUploadError) throw videoUploadError;
+      if (uploadError) throw uploadError;
 
       setUploadProgress(50);
 
@@ -155,16 +157,13 @@ export function Upload() {
 
       setUploadProgress(70);
 
-      const { data: { publicUrl: videoUrl } } = supabase.storage
-        .from('user-content')
-        .getPublicUrl(videoFileName);
+      // Use the publicUrl returned by our improved adapter, or fallback to manual generation
+      const videoUrl = uploadResult?.publicUrl ||
+        supabase.storage.from(bucketName).getPublicUrl(fileName).data.publicUrl;
 
       let thumbnailUrl = null;
       if (thumbnailPath) {
-        const { data: { publicUrl } } = supabase.storage
-          .from('thumbnails')
-          .getPublicUrl(thumbnailPath);
-        thumbnailUrl = publicUrl;
+        thumbnailUrl = supabase.storage.from('thumbnails').getPublicUrl(thumbnailPath).data.publicUrl;
       }
 
       const tagsArray = formData.tags
@@ -183,7 +182,7 @@ export function Upload() {
           category: formData.category,
           tags: tagsArray,
           video_filename: videoFile.name,
-          video_path: videoFileName,
+          video_path: fileName,
           video_url: videoUrl,
           thumbnail_path: thumbnailPath,
           thumbnail_url: thumbnailUrl,
@@ -210,8 +209,18 @@ export function Upload() {
         navigate('/account/my-uploads');
       }, 2000);
     } catch (err: any) {
-      console.error('Upload error:', err);
-      setError(err.message || 'Failed to upload content');
+      console.error('Upload error details:', err);
+      let errorMessage = 'Failed to upload content';
+
+      if (err.message?.includes('storage')) {
+        errorMessage = `Storage Error: ${err.message}. Please check your R2 bucket permissions.`;
+      } else if (err.message?.includes('database') || err.message?.includes('insert')) {
+        errorMessage = `Database Registry Error: ${err.message}. Your file may have uploaded, but was not recorded.`;
+      } else {
+        errorMessage = err.message || 'An unexpected error occurred during upload.';
+      }
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

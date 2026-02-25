@@ -1,7 +1,7 @@
 import { OAuth2Client } from 'google-auth-library';
 import pkg from 'jsonwebtoken';
 const { sign } = pkg;
-import { sql } from '../_lib/db.js';
+import { query } from '../_lib/db.js';
 import { corsHeaders } from '../_lib/auth.js';
 
 const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
@@ -38,26 +38,26 @@ export default async function handler(req: any, res: any) {
 
         // 1. Find or create user
         let user: any;
-        const { rows } = await (sql as any).query(
+        const users = await query(
             'SELECT * FROM users WHERE email = $1',
             [email]
         );
 
-        if (rows.length === 0) {
+        if (users.length === 0) {
             // Create user
-            const { rows: newRows } = await (sql as any).query(
+            const newUsers = await query(
                 'INSERT INTO users (email, display_name) VALUES ($1, $2) RETURNING *',
                 [email, name]
             );
-            user = newRows[0];
+            user = newUsers[0];
 
             // Add default 'user' role
-            await (sql as any).query(
+            await query(
                 'INSERT INTO user_roles (user_id, role) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING',
                 [user.id, 'user']
             );
         } else {
-            user = rows[0];
+            user = users[0];
         }
 
         // 2. Generate JWT

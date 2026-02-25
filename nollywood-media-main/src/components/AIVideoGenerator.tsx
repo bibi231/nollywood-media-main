@@ -81,7 +81,7 @@ export function AIVideoGenerator({ onSaved }: AIVideoGeneratorProps) {
             const rateCheck = await checkAIRateLimit(user.id);
             if (!rateCheck.allowed) {
                 const tierLabel = rateCheck.tier === 'free' ? 'Free' : rateCheck.tier === 'basic' ? 'Basic' : 'Premium';
-                setError(`Daily limit reached (${rateCheck.limit} video${rateCheck.limit > 1 ? 's' : ''}/day on ${tierLabel} plan). Upgrade for more!`);
+                setError(`Daily generation limit reached (${rateCheck.limit} video${rateCheck.limit > 1 ? 's' : ''}/day on ${tierLabel} plan). Upgrade your plan for higher limits and an ad-free experience!`);
                 return;
             }
         }

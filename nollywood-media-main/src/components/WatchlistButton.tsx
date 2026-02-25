@@ -26,7 +26,7 @@ export function WatchlistButton({ filmId, size = 'md', className = '' }: Watchli
 
     try {
       const { data } = await supabase
-        .from('user_watchlist')
+        .from('watchlists')
         .select('id')
         .eq('user_id', user.id)
         .eq('film_id', filmId)
@@ -52,7 +52,7 @@ export function WatchlistButton({ filmId, size = 'md', className = '' }: Watchli
     try {
       if (isInWatchlist) {
         const { error } = await supabase
-          .from('user_watchlist')
+          .from('watchlists')
           .delete()
           .eq('user_id', user.id)
           .eq('film_id', filmId);
@@ -61,7 +61,7 @@ export function WatchlistButton({ filmId, size = 'md', className = '' }: Watchli
         setIsInWatchlist(false);
       } else {
         const { error } = await supabase
-          .from('user_watchlist')
+          .from('watchlists')
           .insert({
             user_id: user.id,
             film_id: filmId,
@@ -99,9 +99,8 @@ export function WatchlistButton({ filmId, size = 'md', className = '' }: Watchli
       aria-label={isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
     >
       <Bookmark
-        className={`${sizeClasses[size]} transition-all ${
-          isInWatchlist ? 'fill-red-600 text-red-600' : 'text-white'
-        }`}
+        className={`${sizeClasses[size]} transition-all ${isInWatchlist ? 'fill-red-600 text-red-600' : 'text-white'
+          }`}
       />
     </button>
   );

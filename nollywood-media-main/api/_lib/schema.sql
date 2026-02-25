@@ -257,6 +257,50 @@ CREATE TABLE IF NOT EXISTS watch_progress (
   UNIQUE(user_id, film_id)
 );
 
+-- ═══ Subscription Plans ═══
+CREATE TABLE IF NOT EXISTS subscription_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  price NUMERIC DEFAULT 0,
+  currency TEXT DEFAULT 'USD',
+  interval TEXT DEFAULT 'month',
+  trial_days INTEGER DEFAULT 0,
+  features TEXT[],
+  max_streams INTEGER DEFAULT 1,
+  max_download INTEGER DEFAULT 0,
+  video_quality TEXT DEFAULT 'SD',
+  ads_enabled BOOLEAN DEFAULT true,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ═══ Subscriptions ═══
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  plan_id UUID REFERENCES subscription_plans(id),
+  status TEXT DEFAULT 'active',
+  current_period_end TIMESTAMPTZ,
+  cancel_at TIMESTAMPTZ,
+  canceled_at TIMESTAMPTZ,
+  paystack_subscription_id TEXT,
+  paystack_customer_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id)
+);
+
+-- ═══ Seed Subscription Plans ═══
+INSERT INTO subscription_plans (code, name, description, price, features, video_quality, ads_enabled)
+VALUES 
+('FREE', 'Free', 'Basic access with ads', 0, ARRAY['Standard access', '1 simultaneous stream'], '480p', true),
+('BASIC', 'Basic', 'HD streaming, no ads', 5, ARRAY['HD streaming', 'Ad-free experience', '5 AI generations/day', '2 simultaneous streams'], '720p', false),
+('PREMIUM', 'Premium', 'Ultra HD + AI Perks', 15, ARRAY['4K Ultra HD', 'Unlimited AI generations', '4 simultaneous streams', 'Offline downloads'], '4K', false)
+ON CONFLICT (code) DO NOTHING;
+
 -- ═══ Indexes ═══
 CREATE INDEX IF NOT EXISTS idx_films_status ON films(status);
 CREATE INDEX IF NOT EXISTS idx_films_genre ON films(genre);

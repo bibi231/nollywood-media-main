@@ -1,7 +1,40 @@
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { Film, Users, Globe, Heart, Home } from 'lucide-react';
 
 export default function AboutUs() {
+  const [stats, setStats] = useState({
+    totalFilms: 0,
+    totalUsers: 0,
+    totalCreators: 0,
+    totalViews: 0,
+    totalCountries: 15
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('/api/analytics/counts');
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M+';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K+';
+    return num.toString();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -29,7 +62,9 @@ export default function AboutUs() {
             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Film className="h-8 w-8 text-red-600" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">10,000+</h3>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              {loading ? '...' : formatNumber(stats.totalFilms)}
+            </h3>
             <p className="text-gray-600 dark:text-gray-400">Videos & Films</p>
           </div>
 
@@ -37,7 +72,9 @@ export default function AboutUs() {
             <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Users className="h-8 w-8 text-blue-600" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">1M+</h3>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              {loading ? '...' : formatNumber(stats.totalUsers)}
+            </h3>
             <p className="text-gray-600 dark:text-gray-400">Active Users</p>
           </div>
 
@@ -45,7 +82,9 @@ export default function AboutUs() {
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Globe className="h-8 w-8 text-green-600" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">50+</h3>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              {loading ? '...' : stats.totalCountries + '+'}
+            </h3>
             <p className="text-gray-600 dark:text-gray-400">Countries</p>
           </div>
 
@@ -53,7 +92,9 @@ export default function AboutUs() {
             <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Heart className="h-8 w-8 text-purple-600" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">100K+</h3>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              {loading ? '...' : formatNumber(stats.totalCreators)}
+            </h3>
             <p className="text-gray-600 dark:text-gray-400">Creators</p>
           </div>
         </div>

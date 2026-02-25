@@ -83,9 +83,9 @@ async function generateWithGemini(options: VideoGenerationOptions): Promise<Gene
             body: JSON.stringify({
                 instances: [{ prompt }],
                 parameters: {
-                    aspectRatio: options.aspectRatio,
-                    durationSeconds: parseInt(options.duration),
-                    sampleCount: 1,
+                    aspect_ratio: options.aspectRatio, // lowercase underscore often used in v1beta
+                    duration_seconds: parseInt(options.duration),
+                    sample_count: 1,
                 },
             }),
         }
@@ -99,7 +99,7 @@ async function generateWithGemini(options: VideoGenerationOptions): Promise<Gene
     const data = await response.json();
     return {
         success: true,
-        operationId: data.name || data.operationId,
+        operationId: data.name || data.operationId || data.id,
         provider: 'gemini',
     };
 }
@@ -191,8 +191,8 @@ async function generateWithLeonardo(options: VideoGenerationOptions): Promise<Ge
 
     const prompt = buildPrompt(options);
 
-    // Leonardo uses image-to-motion, so we first generate a keyframe image
-    const response = await fetch(`${LEONARDO_BASE}/generations`, {
+    // Leonardo supports direct text-to-video via this endpoint
+    const response = await fetch(`${LEONARDO_BASE}/generations-text-to-video`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -200,10 +200,10 @@ async function generateWithLeonardo(options: VideoGenerationOptions): Promise<Ge
         },
         body: JSON.stringify({
             prompt,
-            modelId: 'e71a1c2f-4f80-4800-934f-2c68979d8cc8', // Leonardo Diffusion XL
+            model: 'MOTION2', // Default motion model
             width: options.aspectRatio === '9:16' ? 576 : 1024,
             height: options.aspectRatio === '9:16' ? 1024 : 576,
-            num_images: 1,
+            motionStrength: 5,
         }),
     });
 
@@ -215,7 +215,7 @@ async function generateWithLeonardo(options: VideoGenerationOptions): Promise<Ge
     const data = await response.json();
     return {
         success: true,
-        operationId: data.sdGenerationJob?.generationId || data.generationId,
+        operationId: data.motionVideoGenerationJob?.generationId || data.generationId,
         provider: 'leonardo',
     };
 }
@@ -233,8 +233,12 @@ async function checkLeonardoStatus(operationId: string): Promise<GenerationStatu
     const generation = data.generations_by_pk;
 
     if (generation?.status === 'COMPLETE') {
-        const imageUrl = generation.generated_images?.[0]?.url;
-        return { state: 'completed', progress: 100, videoUrl: imageUrl, provider: 'leonardo' };
+        const videoUrl = generation.generated_videos?.[0]?.url;
+        if (!videoUrl) {
+            // If video is missing but generation is complete, check if it's still being prepared
+            return { state: 'processing', progress: 95, provider: 'leonardo' };
+        }
+        return { state: 'completed', progress: 100, videoUrl, provider: 'leonardo' };
     }
 
     if (generation?.status === 'FAILED') {

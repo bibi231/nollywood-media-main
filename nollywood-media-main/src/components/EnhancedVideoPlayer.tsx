@@ -150,14 +150,14 @@ export function EnhancedVideoPlayer({
 
     try {
       const { data } = await supabase
-        .from('watch_history')
-        .select('position_sec')
+        .from('watch_progress')
+        .select('progress_seconds')
         .eq('user_id', user.id)
         .eq('film_id', filmId)
         .maybeSingle();
 
-      if (data && data.position_sec > 5 && videoRef.current) {
-        videoRef.current.currentTime = data.position_sec;
+      if (data && data.progress_seconds > 5 && videoRef.current) {
+        videoRef.current.currentTime = data.progress_seconds;
       }
     } catch (error) {
       console.error('Error loading position:', error);
@@ -169,12 +169,12 @@ export function EnhancedVideoPlayer({
 
     try {
       await supabase
-        .from('watch_history')
+        .from('watch_progress')
         .upsert({
           user_id: user.id,
           film_id: filmId,
-          position_sec: Math.floor(position),
-          duration_sec: Math.floor(duration),
+          progress_seconds: Math.floor(position),
+          total_seconds: Math.floor(duration),
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id,film_id'
@@ -193,12 +193,9 @@ export function EnhancedVideoPlayer({
         film_id: filmId,
         session_id: sessionId,
         event_type: eventType,
-        position_sec: Math.floor(position),
-        duration_sec: Math.floor(duration),
-        quality,
-        device_type: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
-        browser: navigator.userAgent.split(' ').pop() || 'unknown',
-        meta: { playback_rate: playbackRate }
+        duration_seconds: Math.floor(position),
+        quality: 'auto',
+        device_type: /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'mobile' : 'desktop'
       });
     } catch (error) {
       console.error('Error tracking event:', error);
@@ -303,9 +300,8 @@ export function EnhancedVideoPlayer({
       />
 
       <div
-        className={`absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent transition-opacity duration-300 ${
-          showControls || !playing ? 'opacity-100' : 'opacity-0'
-        }`}
+        className={`absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent transition-opacity duration-300 ${showControls || !playing ? 'opacity-100' : 'opacity-0'
+          }`}
       >
         <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2">
           <div
@@ -384,9 +380,8 @@ export function EnhancedVideoPlayer({
                         if (videoRef.current) videoRef.current.playbackRate = speed;
                         setShowSettings(false);
                       }}
-                      className={`w-full text-left px-2 py-1 rounded hover:bg-gray-800 text-sm ${
-                        playbackRate === speed ? 'text-red-500' : 'text-white'
-                      }`}
+                      className={`w-full text-left px-2 py-1 rounded hover:bg-gray-800 text-sm ${playbackRate === speed ? 'text-red-500' : 'text-white'
+                        }`}
                     >
                       {speed}x {speed === 1 && '(Normal)'}
                     </button>

@@ -91,10 +91,12 @@ export function AdminDashboard() {
         ? ratingsResult.data.reduce((sum, r) => sum + r.stars, 0) / ratingsResult.data.length
         : 0;
 
+      const { data: analytics } = await fetch('/api/analytics/counts').then(r => r.json());
+
       setStats({
         totalFilms: filmsResult.count || 0,
         totalUsers: usersResult.count || 0,
-        totalViews,
+        totalViews: analytics?.totalViews || 0,
         recentFilms,
         pendingUploads,
         approvedUploads,
@@ -245,9 +247,8 @@ export function AdminDashboard() {
             <div className="space-y-3">
               {recentActivity.map((activity, idx) => (
                 <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className={`p-2 rounded ${
-                    activity.type === 'upload_approved' ? 'bg-green-100' : 'bg-blue-100'
-                  }`}>
+                  <div className={`p-2 rounded ${activity.type === 'upload_approved' ? 'bg-green-100' : 'bg-blue-100'
+                    }`}>
                     {activity.type === 'upload_approved' ? (
                       <CheckCircle className="h-4 w-4 text-green-600" />
                     ) : (

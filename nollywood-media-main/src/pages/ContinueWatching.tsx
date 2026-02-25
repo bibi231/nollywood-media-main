@@ -8,8 +8,8 @@ interface WatchProgress {
   id: string;
   film_id: string;
   progress_seconds: number;
-  duration_seconds: number;
-  last_watched: string;
+  total_seconds: number;
+  updated_at: string;
   completed: boolean;
   film: {
     id: string;
@@ -47,12 +47,12 @@ export default function ContinueWatching() {
         .eq('user_id', user.id)
         .eq('completed', false)
         .gt('progress_seconds', 30)
-        .order('last_watched', { ascending: false })
+        .order('updated_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
 
-      setInProgress((data || []).filter(p => p.film));
+      setInProgress((data || []).filter((p: WatchProgress) => p.film));
     } catch (error) {
       console.error('Error loading watch progress:', error);
     } finally {
@@ -152,62 +152,55 @@ export default function ContinueWatching() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6">
             {inProgress.map((progress) => {
-              const percentage = getProgressPercentage(progress.progress_seconds, progress.duration_seconds);
-              const timeRemaining = getTimeRemaining(progress.progress_seconds, progress.duration_seconds);
+              const percentage = getProgressPercentage(progress.progress_seconds, progress.total_seconds);
+              const timeRemaining = getTimeRemaining(progress.progress_seconds, progress.total_seconds);
 
               return (
-                <div key={progress.id} className="group relative">
+                <div key={progress.id} className="group relative flex flex-col">
                   <div
-                    className="relative rounded-lg overflow-hidden bg-gray-900 cursor-pointer"
+                    className="relative rounded-lg overflow-hidden bg-gray-900 cursor-pointer aspect-video"
                     onClick={() => navigate(`/watch/${progress.film_id}`)}
                   >
-                    <div className="aspect-video relative">
-                      <img
-                        src={progress.film.poster_url || 'https://via.placeholder.com/400x225?text=No+Image'}
-                        alt={progress.film.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Play className="h-16 w-16 text-white" />
+                    <img
+                      src={progress.film.poster_url || 'https://via.placeholder.com/400x225?text=No+Image'}
+                      alt={progress.film.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="bg-red-600 rounded-full p-2 sm:p-3 transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                        <Play className="h-6 w-6 sm:h-8 sm:h-8 text-white fill-current" />
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemove(progress.id);
-                        }}
-                        className="absolute top-2 right-2 p-2 bg-black/80 hover:bg-black rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-4 w-4 text-white" />
-                      </button>
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemove(progress.id);
+                      }}
+                      className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-600 rounded-full sm:opacity-0 group-hover:opacity-100 transition-all border border-white/10"
+                    >
+                      <X className="h-3.5 w-3.5 text-white" />
+                    </button>
 
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-800">
                       <div
-                        className="h-full bg-red-600 transition-all"
+                        className="h-full bg-red-600"
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
                   </div>
 
-                  <div className="mt-3">
-                    <h3 className="font-semibold text-white truncate group-hover:text-red-600 transition-colors">
+                  <div className="mt-2.5 space-y-0.5">
+                    <h3 className="font-medium text-white text-sm sm:text-base truncate group-hover:text-red-500 transition-colors">
                       {progress.film.title}
                     </h3>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-sm text-gray-400">
-                        {percentage}% watched
-                      </span>
-                      <span className="text-sm text-gray-400">
-                        {timeRemaining} left
-                      </span>
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs text-gray-400">
+                      <span>{percentage}% watched</span>
+                      <span>{timeRemaining} left</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {progress.film.genre} • {progress.film.release_year}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Last watched {new Date(progress.last_watched).toLocaleDateString()}
+                    <p className="hidden sm:block text-[10px] text-gray-500">
+                      Last watched {new Date(progress.updated_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>

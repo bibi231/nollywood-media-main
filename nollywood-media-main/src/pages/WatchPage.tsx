@@ -1,10 +1,9 @@
 ﻿import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ThumbsUp, ThumbsDown, Share2, Flag, Eye, Play, Maximize, Check, X } from "lucide-react";
+import { Share2, Flag, Eye, Play, Maximize, Check, X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { EnhancedVideoPlayer } from "../components/EnhancedVideoPlayer";
-import { ContentCard } from "../components/ContentCard";
 import { WatchlistButton } from "../components/WatchlistButton";
 import { AdSpace } from "../components/AdSpace";
 import { StarRating } from "../components/StarRating";
@@ -53,15 +52,8 @@ export default function WatchPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [relatedFilms, setRelatedFilms] = useState<Film[]>([]);
   const [loading, setLoading] = useState(true);
-  const [commentText, setCommentText] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [theaterMode, setTheaterMode] = useState(false);
-  const [commentSort, setCommentSort] = useState<'newest' | 'popular'>('newest');
-  const [userLiked, setUserLiked] = useState(false);
-  const [userDisliked, setUserDisliked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
-  const [dislikeCount, setDislikeCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
   const [totalRatings, setTotalRatings] = useState(0);
   const [shareToast, setShareToast] = useState(false);
@@ -113,7 +105,7 @@ export default function WatchPage() {
         .eq('film_id', id);
 
       if (!error && data && data.length > 0) {
-        const sum = data.reduce((acc, r) => acc + r.rating, 0);
+        const sum = data.reduce((acc: number, r: { rating: number }) => acc + r.rating, 0);
         setAverageRating(sum / data.length);
         setTotalRatings(data.length);
       }
@@ -134,8 +126,8 @@ export default function WatchPage() {
         .maybeSingle();
 
       if (data) {
-        setUserLiked(data.like_type === 'like');
-        setUserDisliked(data.like_type === 'dislike');
+        // We'll trust the child components for detailed state, 
+        // but can keep simple tracking if needed.
       }
     } catch (error) {
       console.error('Error loading like status:', error);
@@ -161,6 +153,12 @@ export default function WatchPage() {
         }
       } else {
         setFilm(filmData);
+        // Increment views
+        fetch('/api/films/view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filmId: id })
+        }).catch(err => console.error('Failed to increment views:', err));
       }
 
       await loadComments();
@@ -176,23 +174,7 @@ export default function WatchPage() {
   };
 
   const loadComments = async () => {
-    try {
-      const { data: commentsData, error } = await supabase
-        .from("film_comments")
-        .select(`
-          *,
-          user_profile:user_profiles!film_comments_user_id_fkey(display_name, avatar_url)
-        `)
-        .eq("film_id", id)
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      setComments([]); // In mock mode, we just start with no comments
-    } catch (error) {
-      console.error("Error loading comments:", error);
-      setComments([]);
-    }
+    // Commented out as Comments component handles its own loading
   };
 
   const loadRelatedFilms = async () => {
@@ -214,98 +196,6 @@ export default function WatchPage() {
     }
   };
 
-  const handleLike = async (type: 'like' | 'dislike') => {
-    if (!user) {
-      alert('Please sign in to rate this content');
-      return;
-    }
-
-    try {
-      const isCurrentlyLiked = type === 'like' ? userLiked : userDisliked;
-
-      if (isCurrentlyLiked) {
-        await supabase
-          .from('film_likes')
-          .delete()
-          .eq('film_id', id)
-          .eq('user_id', user.id);
-
-        setUserLiked(false);
-        setUserDisliked(false);
-      } else {
-        await supabase
-          .from('film_likes')
-          .upsert({
-            film_id: id,
-            user_id: user.id,
-            like_type: type,
-          }, { onConflict: 'film_id,user_id' });
-
-        setUserLiked(type === 'like');
-        setUserDisliked(type === 'dislike');
-      }
-    } catch (error) {
-      console.error('Error updating like:', error);
-    }
-  };
-
-  const handleSubmitComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) {
-      alert("Please sign in to comment");
-      return;
-    }
-    if (!commentText.trim()) return;
-
-    setSubmitting(true);
-    try {
-      const { error } = await supabase.from("film_comments").insert({
-        film_id: id,
-        user_id: user.id,
-        content: commentText.trim(),
-      });
-
-      if (error) throw error;
-
-      setCommentText("");
-      await loadComments();
-    } catch (error: any) {
-      console.error("Error submitting comment:", error);
-      alert("Failed to post comment");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleLikeComment = async (commentId: string) => {
-    if (!user) {
-      alert("Please sign in to like comments");
-      return;
-    }
-
-    try {
-      const comment = comments.find((c) => c.id === commentId);
-      if (!comment) return;
-
-      if (comment.user_has_liked) {
-        await supabase
-          .from("comment_likes")
-          .delete()
-          .eq("comment_id", commentId)
-          .eq("user_id", user.id);
-      } else {
-        await supabase.from("comment_likes").insert({
-          comment_id: commentId,
-          user_id: user.id,
-        });
-      }
-
-      await loadComments();
-    } catch (error) {
-      console.error("Error liking comment:", error);
-    }
-  };
-
   if (loading || !film) {
     return (
       <div className="bg-white min-h-screen pt-14 flex items-center justify-center">
@@ -313,13 +203,6 @@ export default function WatchPage() {
       </div>
     );
   }
-
-  const sortedComments = [...comments].sort((a, b) => {
-    if (commentSort === 'popular') {
-      return b.likes_count - a.likes_count;
-    }
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
 
   return (
     <div className={`bg-white dark:bg-gray-900 min-h-screen pt-14 ${!theaterMode ? 'lg:pl-60' : ''}`}>
@@ -387,25 +270,6 @@ export default function WatchPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleLike('like')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${userLiked
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-900 dark:text-white hover:text-blue-600'
-                  }`}
-              >
-                <ThumbsUp className={`w-5 h-5 ${userLiked ? 'fill-current' : ''}`} />
-                <span>Like</span>
-              </button>
-              <button
-                onClick={() => handleLike('dislike')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all ${userDisliked
-                  ? 'bg-red-600 text-white hover:bg-red-700'
-                  : 'bg-gray-100 dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-900 dark:text-white hover:text-red-600'
-                  }`}
-              >
-                <ThumbsDown className={`w-5 h-5 ${userDisliked ? 'fill-current' : ''}`} />
-              </button>
               <button
                 onClick={handleShareClick}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 rounded-full text-sm font-medium transition-all text-gray-900 dark:text-white"

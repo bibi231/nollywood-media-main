@@ -79,9 +79,69 @@ export function Subscription() {
     }
   };
 
-  const handleSubscribe = (planId: string) => {
-    alert('Payment integration coming soon! This will redirect to Stripe/Paystack checkout.');
+  const handleSubscribe = async (plan: Plan) => {
+    if (!user) {
+      alert('Please sign in to subscribe');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch('/api/paystack/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId: plan.id,
+          email: user.email,
+          userId: user.id
+        })
+      });
+
+      const result = await response.json();
+      if (result.error) throw new Error(result.error);
+
+      // Redirect to Paystack
+      window.location.href = result.data.authorization_url;
+    } catch (error: any) {
+      console.error('Error initializing payment:', error);
+      alert(error.message || 'Failed to initialize payment');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const verifyPayment = async (reference: string) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/paystack/verify?reference=${reference}`);
+      const result = await response.json();
+
+      if (result.data?.status === 'success') {
+        alert('Subscription successful! Welcome to the club.');
+        loadCurrentSubscription();
+      } else {
+        throw new Error(result.error || 'Verification failed');
+      }
+    } catch (error: any) {
+      console.error('Error verifying payment:', error);
+      alert('Payment verification failed. Please contact support.');
+    } finally {
+      setLoading(false);
+      // Clean up URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('reference');
+      url.searchParams.delete('status');
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get('reference');
+    if (reference) {
+      verifyPayment(reference);
+    }
+  }, []);
 
   const handleCancelSubscription = async () => {
     if (!currentSubscription || !confirm('Are you sure you want to cancel your subscription?')) {
@@ -89,6 +149,7 @@ export function Subscription() {
     }
 
     try {
+      setLoading(true);
       const { error } = await supabase
         .from('subscriptions')
         .update({
@@ -104,6 +165,8 @@ export function Subscription() {
     } catch (error) {
       console.error('Error canceling subscription:', error);
       alert('Failed to cancel subscription');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -178,9 +241,8 @@ export function Subscription() {
           return (
             <div
               key={plan.id}
-              className={`relative bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition-transform hover:scale-105 ${
-                plan.code === 'PREMIUM' ? 'ring-2 ring-red-600' : ''
-              }`}
+              className={`relative bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition-transform hover:scale-105 ${plan.code === 'PREMIUM' ? 'ring-2 ring-red-600' : ''
+                }`}
             >
               {plan.code === 'PREMIUM' && (
                 <div className="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
@@ -201,12 +263,13 @@ export function Subscription() {
                 <div className="mb-6">
                   <div className="flex items-baseline gap-1">
                     <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                      ${plan.price}
+                      ₦{plan.price * 1500}
                     </span>
                     <span className="text-gray-600 dark:text-gray-400">
                       /{plan.interval}
                     </span>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">Approx. ${plan.price}</p>
                   {plan.trial_days > 0 && (
                     <p className="text-sm text-green-600 dark:text-green-400 mt-1">
                       {plan.trial_days} day free trial
@@ -224,6 +287,12 @@ export function Subscription() {
                   <li className="flex items-start gap-2">
                     <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-gray-700 dark:text-gray-300">
+                      {plan.code === 'FREE' ? '1 AI Generation / day' : plan.code === 'BASIC' ? '5 AI Generations / day' : 'Unlimited AI Generations'}
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
                       {plan.video_quality} quality
                     </span>
                   </li>
@@ -233,34 +302,32 @@ export function Subscription() {
                       {plan.max_streams} simultaneous {plan.max_streams === 1 ? 'stream' : 'streams'}
                     </span>
                   </li>
-                  {plan.max_download > 0 && (
+                  {!plan.ads_enabled ? (
                     <li className="flex items-start gap-2">
                       <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                       <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {plan.max_download === 999 ? 'Unlimited' : plan.max_download} downloads
+                        No Ads (Cinematic Experience)
                       </span>
                     </li>
-                  )}
-                  {plan.ads_enabled && (
+                  ) : (
                     <li className="flex items-start gap-2">
                       <X className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                       <span className="text-sm text-gray-700 dark:text-gray-300">
-                        Ad-supported
+                        Ad-supported viewing
                       </span>
                     </li>
                   )}
                 </ul>
 
                 <button
-                  onClick={() => handleSubscribe(plan.id)}
+                  onClick={() => handleSubscribe(plan)}
                   disabled={isCurrentPlan}
-                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${
-                    isCurrentPlan
-                      ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                      : plan.code === 'PREMIUM'
+                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${isCurrentPlan
+                    ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                    : plan.code === 'PREMIUM'
                       ? 'bg-red-600 hover:bg-red-700 text-white'
                       : 'bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-gray-900'
-                  }`}
+                    }`}
                 >
                   {isCurrentPlan ? 'Current Plan' : isFree ? 'Get Started' : 'Subscribe'}
                 </button>

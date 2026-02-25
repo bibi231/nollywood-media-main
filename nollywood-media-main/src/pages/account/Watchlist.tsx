@@ -37,7 +37,7 @@ export function Watchlist() {
 
     try {
       const { data, error } = await supabase
-        .from('user_watchlist')
+        .from('watchlists')
         .select(`
           *,
           film:films(*)
@@ -84,7 +84,7 @@ export function Watchlist() {
                 ...item.film,
                 genres: [item.film.genre],
                 poster_url: item.film.poster_url || '/placeholder.jpg'
-              }}
+              } as any}
               type="movie"
               onPlayClick={() => handlePlayClick(item.film.id)}
             />

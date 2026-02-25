@@ -10,6 +10,7 @@ const contentTypeLabels: Record<string, string> = {
   series: "TV Series",
   anime: "Anime",
   music: "Music & Concerts",
+  audio: "Audio Tracks",
   documentary: "Documentaries",
 };
 
@@ -38,7 +39,14 @@ export default function ContentTypePage() {
         filtered = filmCatalog.filter((film) =>
           film.tags?.toLowerCase().includes('music') ||
           film.tags?.toLowerCase().includes('concert') ||
-          film.tags?.toLowerCase().includes('afrobeat')
+          film.tags?.toLowerCase().includes('afrobeat') ||
+          film.genre?.toLowerCase().includes('music')
+        );
+      } else if (type === 'audio') {
+        filtered = filmCatalog.filter((film) =>
+          film.tags?.toLowerCase().includes('audio') ||
+          film.tags?.toLowerCase().includes('podcast') ||
+          film.genre?.toLowerCase().includes('audio')
         );
       } else {
         filtered = filmCatalog;
@@ -71,7 +79,7 @@ export default function ContentTypePage() {
                   ...film,
                   genres: [film.genre],
                   poster_url: film.poster_url || '/placeholder.jpg'
-                }}
+                } as any}
                 type="movie"
                 onPlayClick={() => handlePlayClick(film)}
               />

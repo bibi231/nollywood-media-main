@@ -14,6 +14,7 @@ interface AuthContextType {
   user: User | null;
   session: any;
   loading: boolean;
+  tier: string;
   isAdmin: boolean;
   signOut: () => Promise<void>;
 }
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
+  tier: 'free',
   isAdmin: false,
   signOut: async () => { },
 });
@@ -31,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [tier, setTier] = useState<string>('free');
 
   useEffect(() => {
     // Get initial session
@@ -65,12 +68,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
         setUser(authUser as User);
-        await checkAdminStatus(authUser as User);
+        await Promise.all([
+          checkAdminStatus(authUser as User),
+          loadTier(authUser.id)
+        ]);
       }
     } catch (err) {
       console.error('Error loading user:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTier = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('subscription_status')
+        .eq('id', userId)
+        .maybeSingle();
+
+      setTier(data?.subscription_status || 'free');
+    } catch (err) {
+      console.error('Error loading tier:', err);
+      setTier('free');
     }
   };
 
@@ -103,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isAdmin, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, tier, isAdmin, signOut }}>
       {children}
     </AuthContext.Provider>
   );

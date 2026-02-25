@@ -62,7 +62,10 @@ class QueryBuilder {
   }
 
   select(columns: string = '*', opts?: { count?: 'exact'; head?: boolean }) {
-    this._operation = 'select';
+    // Only set as 'select' if no other operation has been explicitly set (insert/update/etc)
+    if (this._operation === 'select' || !this._operation) {
+      this._operation = 'select';
+    }
     this._columns = columns;
     if (opts?.count) this._count = opts.count;
     if (opts?.head) this._head = opts.head;
@@ -204,7 +207,6 @@ class StorageBucket {
       });
 
       const presignData = await presignRes.json();
-
       if (!presignRes.ok) {
         return { data: null, error: presignData.error || 'Failed to get upload URL' };
       }
@@ -222,8 +224,17 @@ class StorageBucket {
         }
       }
 
-      return { data: { path: presignData.path, fullPath: presignData.path }, error: null };
+      // Return both the simple path and the full public URL if available
+      return {
+        data: {
+          path: presignData.path,
+          fullPath: presignData.path,
+          publicUrl: presignData.publicUrl
+        },
+        error: null
+      };
     } catch (err: any) {
+      console.error('[Storage] Upload caught error:', err);
       return { data: null, error: err.message || 'Upload failed' };
     }
   }
