@@ -144,12 +144,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') return res.status(405).json({ data: null, error: { message: 'Method not allowed' } });
 
     try {
-        const body: QueryRequest = req.body;
-        const { table, operation, columns, filters, data, order, limit, offset, upsertConflict, single, count, head } = body;
+        let body: QueryRequest = req.body;
+        // Handle cases where body might not be parsed automatically
+        if (typeof body === 'string') {
+            try { body = JSON.parse(body); } catch { /* ignore */ }
+        }
+
+        const { table, operation, columns, filters, data, order, limit, offset, upsertConflict, single, count, head } = body || {};
+
+        if (!table) {
+            return res.status(400).json({ data: null, error: { message: 'Missing table name' } });
+        }
 
         // Validate table
         const safeTable = sanitizeIdentifier(table);
         if (!ALLOWED_TABLES.has(safeTable)) {
+            console.error(`Rejected unauthorized table access: ${table} (sanitized: ${safeTable})`);
             return res.status(400).json({ data: null, error: { message: `Table '${table}' is not allowed` } });
         }
 
