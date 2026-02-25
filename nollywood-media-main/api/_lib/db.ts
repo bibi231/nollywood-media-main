@@ -5,9 +5,11 @@ export function getDb() {
     return sql;
 }
 
-/** Run a parameterized query using sql.query() */
+/** Run a parameterized query — neon() returns a callable, not a client */
 export async function query(text: string, params: any[] = []) {
     const sql = getDb();
-    const result = await sql.query(text, params);
-    return result.rows ?? result;
+    // neon() is a tagged-template / callable function, NOT a pg Client
+    // It returns an array of row objects directly
+    return await sql(text, params);
 }
+
