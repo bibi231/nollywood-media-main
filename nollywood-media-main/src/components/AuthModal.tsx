@@ -317,10 +317,9 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-1 sm:p-2">
-      <div className="w-full max-w-xs sm:max-w-sm rounded-lg border border-slate-700 bg-slate-900 shadow-2xl transition-all duration-200"
-        style={{ width: '100%', maxWidth: '350px', minHeight: 'auto', padding: '0' }}>
-        <div className="flex items-center justify-between border-b border-slate-700 p-4">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 px-4 py-6">
+      <div className="w-full max-w-[380px] rounded-lg border border-slate-700 bg-slate-900 shadow-2xl transition-all duration-200 overflow-hidden">
+        <div className="flex items-center justify-between border-b border-slate-700 p-4 sm:p-5">
           <h2 className="text-xl font-bold text-white">
             {mode === 'login' && 'Sign In'}
             {mode === 'signup' && 'Create Account'}
