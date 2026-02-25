@@ -13,9 +13,9 @@ export function getDb() {
 export async function query(text: string, params: any[] = []) {
     try {
         const sql = getDb();
-        // neon() is a tagged-template / callable function
-        // Casting to any to avoid TS issues with the dual-overload signature
-        return await (sql as any)(text, params);
+        // The Neon driver requires .query() for parameterized calls
+        // vs tagged template literals
+        return await (sql as any).query(text, params);
     } catch (err: any) {
         console.error(`Database query failed: ${text}`, err);
         throw err;
