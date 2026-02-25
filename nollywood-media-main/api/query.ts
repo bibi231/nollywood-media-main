@@ -146,29 +146,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         let body: QueryRequest = req.body;
-        if (typeof body === 'string') {
-            try { body = JSON.parse(body); } catch { /* ignore */ }
-        }
-
-        const { table, operation, columns, filters, data, order, limit, offset, upsertConflict, single, count, head } = body || {};
-
-        if (!table) {
-            return res.status(400).json({ data: null, error: { message: 'Missing table name' } });
-        }
-
-        const safeTable = sanitizeIdentifier(table);
-        const isAllowed = ALLOWED_TABLES.includes(safeTable);
-
-        console.log(`Query Request: table=${table}, sanitized=${safeTable}, allowed=${isAllowed}`);
-
-        if (!isAllowed) {
-            return res.status(400).json({ data: null, error: { message: `Table '${table}' is not allowed` } });
-        }
-
-        // Validate auth
-        const user = getUserFromRequest(req);
-        const authRequired = AUTH_REQUIRED_TABLES.includes(safeTable) && !PUBLIC_READ_TABLES.includes(safeTable);
-
         if (authRequired && !user && operation !== 'select') {
             return res.status(401).json({ data: null, error: { message: 'Authentication required' } });
         }
