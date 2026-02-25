@@ -1,41 +1,50 @@
 /**
- * SUPABASE CONNECTION TEST
- * Run this in browser console to diagnose auth issues
+ * NaijaMation API Connection Test
+ * Tests connectivity to Neon database via our API layer
  */
 
-import { supabase } from '@/lib/supabase';
-
 export async function testSupabaseConnection() {
-  console.log('🔍 Testing Supabase Connection...');
-  
+  const results: Record<string, any> = {};
+  const apiBase = import.meta.env.VITE_API_BASE || '';
+
+  // Test 1: API reachability
   try {
-    // Test 1: Check if we can reach Supabase
-    console.log('📡 Test 1: Checking Supabase URL...');
-    const response = await fetch('https://uwoubrqimjhfdoobpozncr.supabase.co/rest/v1/', {
+    const response = await fetch(`${apiBase}/api/auth/me`, {
       headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3b3VicWltamhmZG9icG96bmNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTIyNzYsImV4cCI6MjA4Mzg2ODI3Nn0.KwKYEJ6EPpw5WSFjGevF1SWZx_XQ0wLHmhrwT18yFXg',
+        'Authorization': `Bearer test`,
       }
     });
-    console.log('✅ Supabase URL reachable:', response.status);
-    
-    // Test 2: Try health check
-    console.log('📡 Test 2: Health check...');
-    const health = await supabase.from('user_profiles').select('count()', { count: 'exact', head: true });
-    console.log('✅ Health check result:', health);
-    
-    // Test 3: Check auth state
-    console.log('📡 Test 3: Checking auth state...');
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log('✅ Current session:', session);
-    
+    results.apiReachable = response.ok || response.status === 200;
+    results.apiStatus = response.status;
   } catch (err: any) {
-    console.error('❌ Connection Error:', err);
-    console.error('Error details:', {
-      message: err.message,
-      status: err.status,
-      code: err.code,
-    });
+    results.apiReachable = false;
+    results.apiError = err.message;
   }
-}
 
-// Run in console: testSupabaseConnection()
+  // Test 2: Database connectivity (via query endpoint)
+  try {
+    const response = await fetch(`${apiBase}/api/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        table: 'films',
+        operation: 'select',
+        columns: '*',
+        limit: 1,
+      }),
+    });
+    const data = await response.json();
+    results.databaseConnected = response.ok;
+    results.filmsCount = data.data?.length ?? 0;
+  } catch (err: any) {
+    results.databaseConnected = false;
+    results.databaseError = err.message;
+  }
+
+  // Test 3: Auth token check
+  const token = localStorage.getItem('naijamation_token');
+  results.hasStoredToken = !!token;
+
+  console.log('🔍 NaijaMation API Test Results:', results);
+  return results;
+}

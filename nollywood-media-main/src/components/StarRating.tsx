@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { rateLimit } from '../lib/rateLimiter';
 
 interface StarRatingProps {
   filmId: string;
@@ -65,6 +66,13 @@ export function StarRating({ filmId, readonly = false, size = 'md', showCount = 
   const handleRate = async (stars: number) => {
     if (readonly || !user || loading) return;
 
+    // Rate limiting: 10 rating attempts per minute per film
+    const rl = rateLimit(`rate-${filmId}-${user.id}`, 10);
+    if (!rl.allowed) {
+      console.warn('⚠️ Rate limit exceeded for ratings');
+      return;
+    }
+
     setLoading(true);
     try {
       // Update the film_comments table with rating
@@ -114,11 +122,10 @@ export function StarRating({ filmId, readonly = false, size = 'md', showCount = 
             className={`${readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110'} transition-transform ${sizes[size]}`}
           >
             <Star
-              className={`${
-                star <= displayRating
+              className={`${star <= displayRating
                   ? 'fill-yellow-400 text-yellow-400'
                   : 'fill-none text-gray-300 dark:text-gray-600'
-              } ${sizes[size]}`}
+                } ${sizes[size]}`}
             />
           </button>
         ))}

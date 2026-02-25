@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ContentCard } from "../components/ContentCard";
+import { BackButton } from "../components/BackButton";
 import { useCatalog } from "../context/CatalogProvider";
 import { Film } from "../lib/catalog";
 
@@ -51,10 +52,13 @@ export default function ContentTypePage() {
   };
 
   return (
-    <div className="bg-white min-h-screen pt-14 pl-60">
+    <div className="bg-white dark:bg-gray-900 min-h-screen pt-14 lg:pl-60">
       <div className="px-6 py-6">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">{label}</h1>
-        <p className="text-sm text-gray-600 mb-6">
+        <div className="mb-3">
+          <BackButton fallback="/catalog" label="Back to Catalog" />
+        </div>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">{label}</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
           {films.length} {films.length === 1 ? 'video' : 'videos'}
         </p>
 
@@ -75,7 +79,7 @@ export default function ContentTypePage() {
           </div>
         ) : (
           <div className="text-center py-20">
-            <p className="text-gray-600">No {label.toLowerCase()} available</p>
+            <p className="text-gray-600 dark:text-gray-400">No {label.toLowerCase()} available</p>
           </div>
         )}
       </div>

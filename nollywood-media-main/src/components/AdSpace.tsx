@@ -1,35 +1,39 @@
+import { AdBanner } from './ads/AdBanner';
+import { useAdsConfig } from '../hooks/useAdsConfig';
+
 interface AdSpaceProps {
   variant?: 'banner' | 'rectangle' | 'leaderboard' | 'sidebar';
+  /** Optional AdSense ad slot ID — if provided, renders a real ad unit */
+  slot?: string;
   className?: string;
 }
 
-export function AdSpace({ variant = 'banner', className = '' }: AdSpaceProps) {
-  const adSizes = {
-    banner: 'h-24 md:h-32',
-    rectangle: 'h-64 w-full max-w-sm mx-auto',
-    leaderboard: 'h-20 md:h-24',
-    sidebar: 'h-96 w-full',
-  };
+const VARIANT_TO_FORMAT = {
+  banner: 'leaderboard',
+  rectangle: 'rectangle',
+  leaderboard: 'leaderboard',
+  sidebar: 'sidebar',
+} as const;
 
-  const adLabels = {
-    banner: 'Advertisement - 728x90',
-    rectangle: 'Advertisement - 300x250',
-    leaderboard: 'Advertisement - 728x90',
-    sidebar: 'Advertisement - 160x600',
-  };
+/**
+ * Unified ad placement component.
+ * Delegates to AdBanner for real ad rendering when credentials are set.
+ * Falls back to placeholder in dev mode.
+ */
+export function AdSpace({ variant = 'banner', slot, className = '' }: AdSpaceProps) {
+  const { adsEnabled, showPlaceholders } = useAdsConfig();
 
-  return (
-    <div className={`${adSizes[variant]} ${className}`}>
-      <div className="w-full h-full bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center">
-        <div className="text-center px-4">
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            {adLabels[variant]}
-          </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            Ad space reserved
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+  // If ads are enabled or we're showing dev placeholders, use AdBanner
+  if (adsEnabled || showPlaceholders) {
+    return (
+      <AdBanner
+        slot={slot}
+        format={VARIANT_TO_FORMAT[variant]}
+        className={className}
+      />
+    );
+  }
+
+  // Production without credentials: render nothing (no empty placeholders)
+  return null;
 }

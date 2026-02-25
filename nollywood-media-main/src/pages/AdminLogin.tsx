@@ -32,15 +32,18 @@ export function AdminLogin() {
           .eq('user_id', authData.user.id)
           .maybeSingle();
 
-        if (roleError) throw roleError;
-
-        if (roleData?.role === 'admin' || roleData?.role === 'super_admin') {
+        if (roleError) {
+          console.error('Role query error:', roleError);
+          // Don't crash — the user authenticated fine, the roles table might have RLS issues
+          await supabase.auth.signOut();
+          setError('Unable to verify admin status. Please contact the system administrator or check RLS policies on user_roles table.');
+        } else if (roleData?.role === 'admin' || roleData?.role === 'super_admin') {
           // Redirect to admin dashboard
           navigate('/admin');
         } else {
           // Not an admin, sign them out
           await supabase.auth.signOut();
-          setError('Access denied. This portal is for administrators only.');
+          setError(`Access denied. Your role is "${roleData?.role || 'none'}". This portal is for administrators only.`);
         }
       }
     } catch (err: any) {

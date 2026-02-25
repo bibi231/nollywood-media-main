@@ -15,14 +15,14 @@ export function AdminLayout() {
   };
 
   const navItems = [
-    { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-    { path: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
-    { path: '/admin/films', icon: Film, label: 'Films' },
-    { path: '/admin/upload', icon: Upload, label: 'Upload & Ingest' },
-    { path: '/admin/moderation', icon: Flag, label: 'Moderation' },
-    { path: '/admin/compliance', icon: Shield, label: 'Compliance' },
-    { path: '/admin/users', icon: Users, label: 'Users' },
-    { path: '/admin/settings', icon: Settings, label: 'Settings' },
+    { path: '/admin/cms', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+    { path: '/admin/cms/analytics', icon: BarChart3, label: 'Analytics' },
+    { path: '/admin/cms/films', icon: Film, label: 'Films' },
+    { path: '/admin/cms/upload', icon: Upload, label: 'Upload & Ingest' },
+    { path: '/admin/cms/moderation', icon: Flag, label: 'Moderation' },
+    { path: '/admin/cms/compliance', icon: Shield, label: 'Compliance' },
+    { path: '/admin/cms/users', icon: Users, label: 'Users' },
+    { path: '/admin/cms/settings', icon: Settings, label: 'Settings' },
   ];
 
   return (
@@ -53,11 +53,10 @@ export function AdminLayout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center space-x-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                  isCurrentlyActive
+                className={`flex items-center space-x-3 rounded-lg px-3 py-2 text-sm transition-colors ${isCurrentlyActive
                     ? 'bg-red-600 text-white'
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                }`}
+                  }`}
               >
                 <item.icon className="h-4 w-4" />
                 <span>{item.label}</span>

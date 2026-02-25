@@ -62,7 +62,7 @@ export function Profile() {
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
@@ -118,7 +118,7 @@ export function Profile() {
       const { error } = await supabase
         .from('user_profiles')
         .upsert({
-          user_id: user.id,
+          id: user.id,
           ...profile,
           updated_at: new Date().toISOString(),
         });
@@ -152,10 +152,10 @@ export function Profile() {
 
   return (
     <div className="max-w-4xl">
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-2xl font-semibold text-gray-900">My Profile</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage your account information and preferences</p>
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">My Profile</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage your account information and preferences</p>
         </div>
 
         <div className="p-6">
@@ -319,11 +319,10 @@ export function Profile() {
                     key={genre}
                     type="button"
                     onClick={() => toggleGenre(genre)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                      profile.favorite_genres.includes(genre)
-                        ? 'bg-red-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${profile.favorite_genres.includes(genre)
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
                   >
                     {genre}
                   </button>

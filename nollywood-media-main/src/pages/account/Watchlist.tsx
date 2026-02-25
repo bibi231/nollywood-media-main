@@ -69,8 +69,8 @@ export function Watchlist() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">My Watchlist</h1>
-        <p className="text-sm text-gray-600 mt-1">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">My Watchlist</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
           {watchlist.length} {watchlist.length === 1 ? 'video' : 'videos'}
         </p>
       </div>

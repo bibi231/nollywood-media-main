@@ -10,7 +10,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['hls.js', 'react', 'react-dom', 'react-router-dom', '@supabase/supabase-js'],
+    include: ['hls.js', 'react', 'react-dom', 'react-router-dom'],
     exclude: ['lucide-react'],
   },
   build: {
@@ -18,7 +18,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'supabase': ['@supabase/supabase-js'],
+
           'video-player': ['hls.js'],
           'admin': [
             './src/pages/admin/Dashboard.tsx',

@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ContentCard } from "../components/ContentCard";
+import { BackButton } from "../components/BackButton";
+import { AdSpace } from "../components/AdSpace";
 import { useCatalog } from "../context/CatalogProvider";
 import { Film } from "../lib/catalog";
-import { Filter } from "lucide-react";
 
 export default function SearchPage() {
   const [searchParams] = useSearchParams();
@@ -20,7 +21,10 @@ export default function SearchPage() {
           film.title.toLowerCase().includes(searchLower) ||
           film.logline.toLowerCase().includes(searchLower) ||
           film.genre.toLowerCase().includes(searchLower) ||
-          film.director?.toLowerCase().includes(searchLower)
+          film.director?.toLowerCase().includes(searchLower) ||
+          film.cast_members?.toLowerCase().includes(searchLower) ||
+          film.tags?.toLowerCase().includes(searchLower) ||
+          film.studio_label?.toLowerCase().includes(searchLower)
       );
       setFilms(filtered);
     }
@@ -31,21 +35,24 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="bg-white min-h-screen pt-14 pl-60">
+    <div className="bg-white dark:bg-gray-900 min-h-screen pt-14 lg:pl-60">
       <div className="px-6 py-6">
+        <div className="mb-3">
+          <BackButton fallback="/catalog" label="Back to Catalog" />
+        </div>
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
               Search results for "{query}"
             </h1>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               {films.length} {films.length === 1 ? 'result' : 'results'}
             </p>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700">
-            <Filter className="w-4 h-4" />
-            Filters
-          </button>
+        </div>
+
+        <div className="mb-6">
+          <AdSpace variant="leaderboard" />
         </div>
 
         {films.length > 0 ? (
@@ -65,7 +72,7 @@ export default function SearchPage() {
           </div>
         ) : (
           <div className="text-center py-20">
-            <p className="text-gray-600">No results found for "{query}"</p>
+            <p className="text-gray-600 dark:text-gray-400">No results found for "{query}"</p>
             <p className="text-sm text-gray-500 mt-2">Try different keywords</p>
           </div>
         )}

@@ -7,6 +7,8 @@ import { ContentSlider } from "../components/ContentSlider";
 import { AdSpace } from "../components/AdSpace";
 import { Play, Info, Zap } from "lucide-react";
 import { useRecommendations, useContinueWatching } from "../hooks/useRecommendations";
+import { SEO } from "../components/SEO";
+import { SectionErrorBoundary } from "../components/SectionErrorBoundary";
 
 export default function Home() {
   const [films, setFilms] = useState<Film[]>([]);
@@ -105,6 +107,7 @@ export default function Home() {
 
   return (
     <div className="bg-white min-h-screen pt-14 lg:pl-60">
+      <SEO title="Home" description="Stream the best Nollywood and African animation content. Discover trending films, new releases, and curated collections." />
       {featuredFilm && (
         <div className="relative h-[60vh] md:h-[70vh] bg-gray-900">
           <div className="absolute inset-0">
@@ -159,16 +162,18 @@ export default function Home() {
       <div className="py-8">
         {categories.map((category, index) => {
           if (category.hidden) return null;
-          
+
           const categoryFilms = films.filter(category.filter);
           if (categoryFilms.length === 0) return null;
 
           return (
             <div key={category.title}>
-              <ContentSlider
-                title={category.title}
-                films={categoryFilms}
-              />
+              <SectionErrorBoundary inline fallbackTitle={`Error loading ${category.title}`}>
+                <ContentSlider
+                  title={category.title}
+                  films={categoryFilms}
+                />
+              </SectionErrorBoundary>
 
               {index === 2 && (
                 <div className="my-8 px-4 sm:px-6 lg:px-8">

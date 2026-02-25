@@ -1,9 +1,10 @@
-import { Search, Menu, Film, User, Bell, Video, BarChart3 } from 'lucide-react';
-import { useState } from 'react';
+import { Search, Menu, Film, User, Bell, Video, BarChart3, History } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { AuthModal } from './AuthModal';
+import { supabase } from '../lib/supabase';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -14,8 +15,73 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
   const { user, isAdmin, signOut } = useAuth();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Fetch unread notification count
+  useEffect(() => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
+
+    const fetchUnreadCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('read', false);
+
+        if (!error && count !== null) {
+          setUnreadCount(count);
+        }
+      } catch (err) {
+        console.error('Error fetching notification count:', err);
+      }
+    };
+
+    fetchUnreadCount();
+
+    // Subscribe to realtime notification changes
+    const channel = supabase
+      .channel('notifications-count')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchUnreadCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  // Close user menu on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,12 +151,17 @@ export function Header({ onMenuClick }: HeaderProps) {
                 )}
                 <Link
                   to="/account/notifications"
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
                   title="Notifications"
                 >
                   <Bell className="w-6 h-6 text-gray-700" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-600 rounded-full">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
-                <div className="relative">
+                <div className="relative" ref={menuRef}>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white font-semibold hover:bg-red-700 transition-colors"
@@ -98,7 +169,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                     {user.email?.charAt(0).toUpperCase()}
                   </button>
                   {showUserMenu && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl py-2">
+                    <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
                       <div className="px-4 py-3 border-b border-gray-200">
                         <p className="text-sm font-semibold text-gray-900">{user.email?.split('@')[0]}</p>
                         <p className="text-xs text-gray-500 truncate">{user.email}</p>
@@ -118,6 +189,27 @@ export function Header({ onMenuClick }: HeaderProps) {
                       >
                         <Video className="w-5 h-5" />
                         <span className="text-sm">My Watchlist</span>
+                      </Link>
+                      <Link
+                        to="/account/history"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 text-gray-700"
+                      >
+                        <History className="w-5 h-5" />
+                        <span className="text-sm">Watch History</span>
+                      </Link>
+                      <Link
+                        to="/account/notifications"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 text-gray-700"
+                      >
+                        <Bell className="w-5 h-5" />
+                        <span className="text-sm">Notifications</span>
+                        {unreadCount > 0 && (
+                          <span className="ml-auto text-xs font-bold text-white bg-red-600 rounded-full px-1.5 py-0.5">
+                            {unreadCount}
+                          </span>
+                        )}
                       </Link>
                       <Link
                         to="/studio"

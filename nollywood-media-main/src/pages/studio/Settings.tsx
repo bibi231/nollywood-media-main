@@ -39,7 +39,7 @@ export function StudioSettings() {
       const { data: profileData } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .maybeSingle();
 
       if (profileData) {
@@ -87,7 +87,7 @@ export function StudioSettings() {
       const { error: profileError } = await supabase
         .from('user_profiles')
         .upsert({
-          user_id: user.id,
+          id: user.id,
           display_name: profile.display_name,
           bio: profile.bio,
         });
@@ -136,11 +136,10 @@ export function StudioSettings() {
       </div>
 
       {message && (
-        <div className={`mb-6 rounded-lg p-4 ${
-          message.type === 'success'
+        <div className={`mb-6 rounded-lg p-4 ${message.type === 'success'
             ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800'
             : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800'
-        }`}>
+          }`}>
           {message.text}
         </div>
       )}

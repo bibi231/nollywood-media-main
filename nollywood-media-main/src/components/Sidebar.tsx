@@ -30,7 +30,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     { icon: Home, label: 'Home', path: '/' },
     { icon: Compass, label: 'Explore', path: '/catalog' },
     { icon: TrendingUp, label: 'Trending', path: '/trending' },
-    { icon: Clock, label: 'Continue Watching', path: '/account/history' },
+    { icon: Clock, label: 'Continue Watching', path: '/continue-watching' },
   ];
 
   const contentLinks = [
@@ -83,11 +83,10 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 key={link.path}
                 to={link.path}
                 onClick={handleLinkClick}
-                className={`flex items-center gap-6 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                  isActive(link.path)
+                className={`flex items-center gap-6 px-3 py-2.5 rounded-lg transition-all duration-200 ${isActive(link.path)
                     ? 'bg-gray-100 dark:bg-gray-800 font-medium text-gray-900 dark:text-white'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:translate-x-1'
-                }`}
+                  }`}
               >
                 <link.icon className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm">{link.label}</span>
@@ -106,11 +105,10 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 key={link.path}
                 to={link.path}
                 onClick={handleLinkClick}
-                className={`flex items-center gap-6 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                  isActive(link.path)
+                className={`flex items-center gap-6 px-3 py-2.5 rounded-lg transition-all duration-200 ${isActive(link.path)
                     ? 'bg-gray-100 dark:bg-gray-800 font-medium text-gray-900 dark:text-white'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:translate-x-1'
-                }`}
+                  }`}
               >
                 <link.icon className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm">{link.label}</span>
@@ -129,11 +127,10 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 key={link.path}
                 to={link.path}
                 onClick={handleLinkClick}
-                className={`flex items-center gap-6 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                  isActive(link.path)
+                className={`flex items-center gap-6 px-3 py-2.5 rounded-lg transition-all duration-200 ${isActive(link.path)
                     ? 'bg-gray-100 dark:bg-gray-800 font-medium text-gray-900 dark:text-white'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:translate-x-1'
-                }`}
+                  }`}
               >
                 <link.icon className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm">{link.label}</span>

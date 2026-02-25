@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Film, FilterSpec, SortKey, filterFilms } from "../lib/catalog";
 import { supabase } from "../lib/supabase";
+import { MOCK_FILMS } from "../lib/mockData";
 
 interface CatalogContextValue {
   films: Film[];
@@ -29,34 +30,39 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
 
       if (dbError) throw dbError;
 
-      const filmsData: Film[] = (data || []).map(film => ({
-        id: film.id,
-        title: film.title,
-        poster_url: film.poster_url || '',
-        thumbnail_url: film.thumbnail_url || film.poster_url || '',
-        video_url: film.video_url || '',
-        logline: film.logline,
-        synopsis: film.synopsis || film.logline,
-        genre: film.genre,
-        release_year: film.release_year,
-        runtime_min: film.runtime_min,
-        rating: film.rating,
-        setting_region: film.setting_region,
-        languages_audio: film.languages_audio,
-        languages_subtitles: film.languages_subtitles,
-        cast_members: film.cast_members,
-        director: film.director,
-        studio_label: film.studio_label,
-        tags: film.tags,
-        views: film.views || 0,
-        created_at: film.created_at,
-      }));
-
-      setFilms(filmsData);
+      if (!data || data.length === 0) {
+        console.warn('⚠️ No films found in database, using mock data fallback.');
+        setFilms(MOCK_FILMS);
+      } else {
+        const filmsData: Film[] = data.map(film => ({
+          id: film.id,
+          title: film.title,
+          poster_url: film.poster_url || '',
+          thumbnail_url: film.thumbnail_url || film.poster_url || '',
+          video_url: film.video_url || '',
+          logline: film.logline,
+          synopsis: film.synopsis || film.logline,
+          genre: film.genre,
+          release_year: film.release_year,
+          runtime_min: film.runtime_min,
+          rating: film.rating,
+          setting_region: film.setting_region,
+          languages_audio: film.languages_audio,
+          languages_subtitles: film.languages_subtitles,
+          cast_members: film.cast_members,
+          director: film.director,
+          studio_label: film.studio_label,
+          tags: film.tags,
+          views: film.views || 0,
+          created_at: film.created_at,
+        }));
+        setFilms(filmsData);
+      }
       setLoading(false);
     } catch (err: any) {
-      console.error('Error loading films:', err);
-      setError(err);
+      console.error('Error loading films, using mock data fallback:', err);
+      setFilms(MOCK_FILMS);
+      setError(null); // Clear error as we have fallback data
       setLoading(false);
     }
   };
@@ -64,24 +70,12 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     loadFilms();
 
-    try {
-      const subscription = supabase
-        .channel('films_changes')
-        .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'films' },
-          () => {
-            loadFilms();
-          }
-        )
-        .subscribe();
+    // Poll for changes every 30 seconds (replaces Supabase realtime)
+    const interval = setInterval(() => {
+      loadFilms();
+    }, 30000);
 
-      return () => {
-        subscription?.unsubscribe().catch(() => {});
-      };
-    } catch (err) {
-      console.error('Subscription error:', err);
-      return undefined;
-    }
+    return () => clearInterval(interval);
   }, []);
 
   const filter = (where: FilterSpec, sort?: SortKey): Film[] => {

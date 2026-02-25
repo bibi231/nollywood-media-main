@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Play, Info, Plus, X } from 'lucide-react';
+import { Play, Info, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Movie } from '../types';
+import { WatchlistButton } from './WatchlistButton';
 
 interface HeroProps {
   movie: Movie;
@@ -31,7 +33,9 @@ export function Hero({ movie, onPlayClick, onMoreInfoClick }: HeroProps) {
             <div className="flex items-center space-x-2 text-slate-300">
               {movie.genres.slice(0, 3).map((genre, index) => (
                 <span key={genre}>
-                  {genre}
+                  <Link to={`/genre/${encodeURIComponent(genre)}`} className="hover:text-white hover:underline transition-colors">
+                    {genre}
+                  </Link>
                   {index < Math.min(movie.genres.length, 3) - 1 && (
                     <span className="mx-2">•</span>
                   )}
@@ -76,9 +80,7 @@ export function Hero({ movie, onPlayClick, onMoreInfoClick }: HeroProps) {
               <span>More Info</span>
             </button>
 
-            <button className="p-3 bg-slate-800/80 text-white rounded-lg hover:bg-slate-700 transition-colors backdrop-blur-sm">
-              <Plus className="w-5 h-5" />
-            </button>
+            <WatchlistButton filmId={movie.id} size="lg" />
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { User, Clock, Bookmark, Upload, Film, Settings, Bell, CreditCard, Home } from 'lucide-react';
+import { User, Clock, Bookmark, Upload, Film, Settings, Bell, CreditCard, Home, ListMusic } from 'lucide-react';
 
 export function AccountLayout() {
   const location = useLocation();
@@ -12,6 +12,7 @@ export function AccountLayout() {
     { path: '/account/history', icon: Clock, label: 'Watch History' },
     { path: '/account/upload', icon: Upload, label: 'Upload Content' },
     { path: '/account/my-uploads', icon: Film, label: 'My Uploads' },
+    { path: '/account/playlists', icon: ListMusic, label: 'Playlists' },
   ];
 
   const settingsItems = [
@@ -57,11 +58,10 @@ export function AccountLayout() {
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${
-                      isActive(item.path)
-                        ? 'bg-red-600 text-white font-medium shadow-sm'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:translate-x-1'
-                    }`}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${isActive(item.path)
+                      ? 'bg-red-600 text-white font-medium shadow-sm'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:translate-x-1'
+                      }`}
                   >
                     <item.icon className="h-4 w-4" />
                     <span>{item.label}</span>
@@ -78,11 +78,10 @@ export function AccountLayout() {
                     <Link
                       key={item.path}
                       to={item.path}
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${
-                        isActive(item.path)
-                          ? 'bg-red-600 text-white font-medium shadow-sm'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:translate-x-1'
-                      }`}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${isActive(item.path)
+                        ? 'bg-red-600 text-white font-medium shadow-sm'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:translate-x-1'
+                        }`}
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Clock, CheckCircle, XCircle, AlertCircle, Eye, Trash2 } from 'lucide-react';
+import { Upload, Clock, CheckCircle, XCircle, AlertCircle, Eye, Trash2, Sparkles } from 'lucide-react';
 
 interface UserUpload {
   id: string;
@@ -19,6 +19,7 @@ interface UserUpload {
   likes: number;
   thumbnail_url: string | null;
   video_url: string | null;
+  source?: string;
 }
 
 export function MyUploads() {
@@ -141,6 +142,13 @@ export function MyUploads() {
           <Upload className="h-4 w-4" />
           New Upload
         </button>
+        <button
+          onClick={() => { navigate('/account/upload'); setTimeout(() => document.querySelector<HTMLButtonElement>('[data-tab="ai"]')?.click(), 100); }}
+          className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+        >
+          <Sparkles className="h-4 w-4" />
+          AI Generate
+        </button>
       </div>
 
       <div className="mb-6 flex gap-2">
@@ -148,11 +156,10 @@ export function MyUploads() {
           <button
             key={status}
             onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filter === status
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === status
                 ? 'bg-red-600 text-white'
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
+              }`}
           >
             {status.charAt(0).toUpperCase() + status.slice(1)}
           </button>
@@ -207,6 +214,12 @@ export function MyUploads() {
                         <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
                           {upload.category}
                         </span>
+                        {upload.source === 'ai' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded text-xs font-medium">
+                            <Sparkles className="h-3 w-3" />
+                            AI Generated
+                          </span>
+                        )}
                         <span>•</span>
                         <span>{new Date(upload.created_at).toLocaleDateString()}</span>
                         <span>•</span>
