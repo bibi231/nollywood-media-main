@@ -1,7 +1,13 @@
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import type { VercelRequest } from '@vercel/node';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'naijamation-dev-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    console.warn('WARNING: JWT_SECRET environment variable is not set. Using dev default.');
+}
+
+const SECRET = JWT_SECRET || 'naijamation-dev-secret-change-in-production';
 
 export interface JWTPayload {
     userId: string;
@@ -10,12 +16,12 @@ export interface JWTPayload {
 }
 
 export function signToken(payload: JWTPayload): string {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+    return jwt.sign(payload, SECRET, { expiresIn: '7d' });
 }
 
 export function verifyToken(token: string): JWTPayload | null {
     try {
-        return jwt.verify(token, JWT_SECRET) as JWTPayload;
+        return jwt.verify(token, SECRET) as JWTPayload;
     } catch {
         return null;
     }
