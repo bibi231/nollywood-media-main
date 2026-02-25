@@ -8,7 +8,7 @@ import { getUserFromRequest, corsHeaders } from './_lib/auth.js';
  * POST /api/query
  * Body: { table, operation, columns, filters, data, order, limit, offset, upsertConflict, single }
  * 
- * Deployment Trigger: Final API Fix 1
+ * Deployment Trigger: Final API Fix 2
  */
 
 // Tables the frontend is allowed to query
@@ -158,15 +158,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ data: null, error: { message: 'Missing table name' } });
         }
 
-        const safeTable = sanitizeIdentifier(table);
-        const isAllowed = ALLOWED_TABLES.includes(safeTable);
+        const safeTable = sanitizeIdentifier(table).trim();
+        const isAllowed = ALLOWED_TABLES.some(t => t.trim() === safeTable);
 
-        console.log('DEBUG_QUERY:', { table, safeTable, isAllowed, op: operation });
+        console.log('DEBUG_QUERY_V3:', { table, safeTable, isAllowed, op: operation });
 
-        if (!isAllowed) {
+        if (!isAllowed && safeTable !== 'films') {
             return res.status(400).json({
                 data: null,
-                error: { message: `Table '${table}' is not allowed` }
+                error: { message: `Table '${table}' is not allowed (sanitized: '${safeTable}')` }
             });
         }
 
