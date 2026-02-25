@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { corsHeaders, signToken } from '../_lib/auth';
-import { query } from '../_lib/db';
+import { corsHeaders, signToken } from '../_lib/auth.js';
+import { query } from '../_lib/db.js';
 
 /**
  * Google OAuth — verify Google ID Token and create/login user

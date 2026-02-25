@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { getUserFromRequest, corsHeaders } from './_lib/auth';
+import { getUserFromRequest, corsHeaders } from './_lib/auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     Object.entries(corsHeaders()).forEach(([k, v]) => res.setHeader(k, v));

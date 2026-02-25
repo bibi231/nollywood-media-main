@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { query } from '../_lib/db';
-import { getUserFromRequest, corsHeaders } from '../_lib/auth';
+import { query } from '../_lib/db.js';
+import { getUserFromRequest, corsHeaders } from '../_lib/auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     Object.entries(corsHeaders()).forEach(([k, v]) => res.setHeader(k, v));
