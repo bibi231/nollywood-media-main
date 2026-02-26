@@ -44,28 +44,33 @@ export function Footer() {
   const isAdminPortal = location.pathname.startsWith('/admin');
 
   return (
-    <footer className="bg-gray-100 text-gray-700 border-t border-gray-200 mt-auto">
+    <footer className="bg-black text-gray-400 border-t border-white/5 mt-auto relative overflow-hidden">
+      {/* Decorative Brand Accent */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-red-600/50 to-transparent" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="py-12 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
+        <div className="py-16 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12 sm:gap-8">
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
-            <Link to="/" className="flex items-center gap-2 mb-4 group">
-              <Film className="w-8 h-8 text-red-600 group-hover:scale-110 transition-transform duration-200" />
-              <span className="text-xl font-bold text-gray-900">NaijaMation</span>
+            <Link to="/" className="flex items-center gap-2 mb-6 group">
+              <Film className="w-8 h-8 text-red-600 drop-shadow-[0_0_8px_rgba(220,38,38,0.5)] group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-2xl font-black text-white tracking-tighter uppercase italic">
+                Naija<span className="text-red-600">Mation</span>
+              </span>
             </Link>
-            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-              Your premier destination for authentic Nigerian cinema and African storytelling.
+            <p className="text-sm text-gray-500 mb-6 leading-relaxed max-w-xs">
+              The premium destination for cinematic African storytelling. Experience the next era of Nollywood.
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               {socialLinks.map((social) => (
                 <a
                   key={social.label}
                   href={social.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 bg-white border border-gray-300 rounded-full hover:bg-gray-50 hover:border-red-600 hover:scale-110 transition-all duration-200"
+                  className="p-2 bg-gray-900 border border-white/5 rounded-xl hover:bg-gray-800 hover:border-red-600/50 hover:scale-110 transition-all duration-300"
                   aria-label={social.label}
                 >
-                  <social.icon className="w-4 h-4 text-gray-700" />
+                  <social.icon className="w-4 h-4 text-gray-400" />
                 </a>
               ))}
             </div>
@@ -73,15 +78,15 @@ export function Footer() {
 
           {Object.entries(footerLinks).map(([category, links]) => (
             <div key={category}>
-              <h3 className="text-gray-900 font-semibold mb-4 text-sm uppercase tracking-wider">
+              <h3 className="text-white font-black mb-6 text-xs uppercase tracking-[0.2em]">
                 {category}
               </h3>
-              <ul className="space-y-2">
+              <ul className="space-y-4">
                 {links.map((link) => (
                   <li key={link.path}>
                     <Link
                       to={link.path}
-                      className="text-sm text-gray-600 hover:text-red-600 hover:translate-x-1 inline-block transition-all duration-200"
+                      className="text-sm text-gray-500 hover:text-red-500 hover:translate-x-1 inline-flex items-center transition-all duration-300"
                     >
                       {link.label}
                     </Link>
@@ -92,71 +97,56 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="border-t border-gray-300 py-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-4">
-              <p className="text-sm text-gray-600">
-                © {currentYear} NaijaMation. All rights reserved.
+        <div className="border-t border-white/5 py-10">
+          <div className="flex flex-col lg:flex-row justify-between items-center gap-8">
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <p className="text-xs text-gray-600 font-medium">
+                © {currentYear} NAIJAMATION MEDIA. ALL RIGHTS RESERVED.
               </p>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Globe className="w-4 h-4" />
-                <span>English (US)</span>
+              <div className="h-4 w-[1px] bg-white/10 hidden md:block" />
+              <div className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-widest font-bold">
+                <Globe className="w-3 h-3 text-red-600" />
+                <span>Global Edition</span>
               </div>
             </div>
-            <div className="flex items-center gap-6">
-              <Link
-                to="/terms"
-                className="text-sm text-gray-600 hover:text-red-600 transition-colors"
-              >
-                Terms
-              </Link>
-              <Link
-                to="/privacy"
-                className="text-sm text-gray-600 hover:text-red-600 transition-colors"
-              >
-                Privacy
-              </Link>
-              <Link
-                to="/cookies"
-                className="text-sm text-gray-600 hover:text-red-600 transition-colors"
-              >
-                Cookies
-              </Link>
-              <Link
-                to="/help"
-                className="text-sm text-gray-600 hover:text-red-600 transition-colors"
-              >
-                Help
-              </Link>
+
+            <div className="flex flex-wrap justify-center items-center gap-8 text-[10px] font-black uppercase tracking-[0.1em] text-gray-600">
+              {['Terms', 'Privacy', 'Cookies', 'Help'].map((item) => (
+                <Link
+                  key={item}
+                  to={`/${item.toLowerCase() === 'help' ? 'help' : item.toLowerCase()}`}
+                  className="hover:text-red-500 transition-colors"
+                >
+                  {item}
+                </Link>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-gray-200 py-3">
+      <div className="bg-white/[0.02] border-t border-white/5 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-2 text-xs text-gray-600">
-            <p>Powered by modern web technologies • Built with passion in Africa</p>
-            <div className="flex items-center gap-4">
-              {isAdminPortal ? (
-                <Link
-                  to="/"
-                  className="text-xs text-red-600 font-semibold hover:underline border border-red-600 rounded px-2 py-1 bg-white transition-colors"
-                >
-                  ← Back to Main Site
-                </Link>
-              ) : (
-                <Link
-                  to="/admin/login"
-                  className="text-xs text-red-600 font-semibold hover:underline border border-red-600 rounded px-2 py-1 bg-white transition-colors"
-                >
-                  Admin Portal
-                </Link>
-              )}
-              <Mail className="w-3 h-3" />
-              <a href="mailto:hello@naijamation.com" className="hover:text-red-600 transition-colors">
-                hello@naijamation.com
-              </a>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">
+            <p className="flex items-center gap-2 italic">
+              Built with precision for the <span className="text-red-600/80">Creator Economy</span>
+            </p>
+            <div className="flex items-center gap-6">
+              <Link
+                to={isAdminPortal ? "/" : "/admin/login"}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-300 ${isAdminPortal
+                  ? 'border-white/10 hover:bg-white/5 text-gray-500'
+                  : 'border-red-600/50 hover:bg-red-600/10 text-red-500 shadow-[0_0_10px_rgba(220,38,38,0.1)]'
+                  }`}
+              >
+                {isAdminPortal ? "Main Site" : "Admin Portal"}
+              </Link>
+              <div className="flex items-center gap-2">
+                <Mail className="w-3 h-3 text-red-600" />
+                <a href="mailto:contact@naijamation.com" className="hover:text-white transition-colors">
+                  contact@naijamation.com
+                </a>
+              </div>
             </div>
           </div>
         </div>

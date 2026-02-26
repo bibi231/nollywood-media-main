@@ -1,45 +1,29 @@
 import { useEffect, useState } from 'react';
-import {
-  getHybridRecommendations,
-  getContinueWatchingRecommendations,
-  getColdStartRecommendations,
-  getContentBasedRecommendations,
-  trackPlaybackEvent,
-  calculateUserEngagementScore
-} from '@/lib/recommendations';
+import { trackPlaybackEvent, calculateUserEngagementScore } from '@/lib/recommendations';
 
 export function useRecommendations(userId: string | null) {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!userId) {
-      // Cold start for new/guest users
-      loadColdStart();
-    } else {
-      loadPersonalizedRecommendations();
-    }
+    loadRecommendations();
   }, [userId]);
 
-  async function loadPersonalizedRecommendations() {
+  async function loadRecommendations() {
     setLoading(true);
     try {
-      const recs = await getHybridRecommendations(userId!, 15);
-      setRecommendations(recs);
+      const apiBase = import.meta.env.VITE_API_BASE || '';
+      const params = new URLSearchParams();
+      if (userId) params.append('userId', userId);
+
+      const response = await fetch(`${apiBase}/api/recommendations?${params.toString()}`);
+      const result = await response.json();
+
+      if (result.data) {
+        setRecommendations(result.data);
+      }
     } catch (error) {
       console.error('Error loading recommendations:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadColdStart() {
-    setLoading(true);
-    try {
-      const recs = await getColdStartRecommendations(15);
-      setRecommendations(recs);
-    } catch (error) {
-      console.error('Error loading cold start:', error);
     } finally {
       setLoading(false);
     }
@@ -61,8 +45,12 @@ export function useContinueWatching(userId: string | null) {
   async function loadContinueWatching() {
     setLoading(true);
     try {
-      const continueWatching = await getContinueWatchingRecommendations(userId!, 5);
-      setItems(continueWatching);
+      const apiBase = import.meta.env.VITE_API_BASE || '';
+      const response = await fetch(`${apiBase}/api/recommendations?type=continue&userId=${userId}&limit=10`);
+      const result = await response.json();
+      if (result.data) {
+        setItems(result.data);
+      }
     } catch (error) {
       console.error('Error loading continue watching:', error);
     } finally {
@@ -82,10 +70,15 @@ export function useContentBased(filmId: string, userId: string | null) {
   }, [filmId, userId]);
 
   async function loadSimilar() {
+    if (!filmId) return;
     setLoading(true);
     try {
-      const recs = await getContentBasedRecommendations(filmId, userId || undefined, 10);
-      setRecommendations(recs);
+      const apiBase = import.meta.env.VITE_API_BASE || '';
+      const response = await fetch(`${apiBase}/api/recommendations?type=similar&filmId=${filmId}&limit=10`);
+      const result = await response.json();
+      if (result.data) {
+        setRecommendations(result.data);
+      }
     } catch (error) {
       console.error('Error loading similar content:', error);
     } finally {

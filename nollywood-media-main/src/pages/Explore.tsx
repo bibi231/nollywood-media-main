@@ -1,219 +1,58 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
 import { FilmRow } from '../components/FilmRow';
 import { Film, Home } from 'lucide-react';
-
-interface Film {
-  id: string;
-  title: string;
-  poster_url: string;
-  logline: string;
-  genre: string;
-  release_year: number;
-  rating: string;
-}
 
 export default function Explore() {
   const { user } = useAuth();
   const [recommendations, setRecommendations] = useState<{
-    forYou: Film[];
-    basedOnHistory: Film[];
-    similarUsers: Film[];
-    popularInGenre: Film[];
-    newReleases: Film[];
+    forYou: any[];
+    popular: any[];
+    newReleases: any[];
+    trending: any[];
   }>({
     forYou: [],
-    basedOnHistory: [],
-    similarUsers: [],
-    popularInGenre: [],
+    popular: [],
     newReleases: [],
+    trending: [],
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadRecommendations();
+    loadExploreData();
   }, [user]);
 
-  const loadRecommendations = async () => {
+  const loadExploreData = async () => {
+    setLoading(true);
     try {
-      if (!user) {
-        await loadPublicRecommendations();
-      } else {
-        await loadPersonalizedRecommendations();
-      }
+      const apiBase = import.meta.env.VITE_API_BASE || '';
+
+      const fetchFeed = async (type: string) => {
+        const params = new URLSearchParams({ type });
+        if (user?.id) params.append('userId', user.id);
+        const res = await fetch(`${apiBase}/api/recommendations?${params.toString()}`);
+        return (await res.json()).data || [];
+      };
+
+      const [forYou, popular, newReleases, trending] = await Promise.all([
+        fetchFeed('mixed'),
+        fetchFeed('popular'),
+        fetchFeed('new'),
+        fetchFeed('trending')
+      ]);
+
+      setRecommendations({
+        forYou,
+        popular,
+        newReleases,
+        trending
+      });
     } catch (error) {
-      console.error('Error loading recommendations:', error);
+      console.error('Error loading explore data:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadPublicRecommendations = async () => {
-    const { data: popularFilms } = await supabase
-      .from('films')
-      .select('*')
-      .order('views', { ascending: false })
-      .limit(20);
-
-    const { data: newFilms } = await supabase
-      .from('films')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    setRecommendations({
-      forYou: popularFilms || [],
-      basedOnHistory: [],
-      similarUsers: [],
-      popularInGenre: popularFilms?.slice(0, 10) || [],
-      newReleases: newFilms || [],
-    });
-  };
-
-  const loadPersonalizedRecommendations = async () => {
-    if (!user) return;
-
-    const { data: watchHistory } = await supabase
-      .from('watch_history')
-      .select('film_id')
-      .eq('user_id', user.id)
-      .order('watched_at', { ascending: false })
-      .limit(10);
-
-    const watchedIds = watchHistory?.map(w => w.film_id) || [];
-
-    const { data: preferences } = await supabase
-      .from('user_preferences')
-      .select('favorite_genres, watched_genres')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    const userGenres = [
-      ...(preferences?.favorite_genres || []),
-      ...(preferences?.watched_genres || [])
-    ].filter((v, i, a) => a.indexOf(v) === i);
-
-    const [forYou, basedOnHistory, similarUsers, popularInGenre, newReleases] = await Promise.all([
-      getForYouRecommendations(watchedIds, userGenres),
-      getBasedOnHistoryRecommendations(watchedIds),
-      getSimilarUsersRecommendations(watchedIds),
-      getPopularInGenreRecommendations(userGenres, watchedIds),
-      getNewReleases(watchedIds),
-    ]);
-
-    setRecommendations({
-      forYou,
-      basedOnHistory,
-      similarUsers,
-      popularInGenre,
-      newReleases,
-    });
-  };
-
-  const getForYouRecommendations = async (watchedIds: string[], genres: string[]) => {
-    let query = supabase
-      .from('films')
-      .select('*')
-      .not('id', 'in', `(${watchedIds.join(',')})`)
-      .limit(20);
-
-    if (genres.length > 0) {
-      query = query.in('genre', genres);
-    }
-
-    const { data } = await query.order('views', { ascending: false });
-    return data || [];
-  };
-
-  const getBasedOnHistoryRecommendations = async (watchedIds: string[]) => {
-    if (watchedIds.length === 0) return [];
-
-    const { data: watchedFilms } = await supabase
-      .from('films')
-      .select('genre, director, cast')
-      .in('id', watchedIds);
-
-    if (!watchedFilms || watchedFilms.length === 0) return [];
-
-    const genres = watchedFilms.map(f => f.genre).filter(Boolean);
-    const directors = watchedFilms.map(f => f.director).filter(Boolean);
-
-    const { data } = await supabase
-      .from('films')
-      .select('*')
-      .not('id', 'in', `(${watchedIds.join(',')})`)
-      .or(`genre.in.(${genres.join(',')}),director.in.(${directors.join(',')})`)
-      .limit(20);
-
-    return data || [];
-  };
-
-  const getSimilarUsersRecommendations = async (watchedIds: string[]) => {
-    if (watchedIds.length === 0 || !user) return [];
-
-    const { data: similarUsers } = await supabase
-      .from('watch_history')
-      .select('user_id, film_id')
-      .in('film_id', watchedIds)
-      .neq('user_id', user.id)
-      .limit(100);
-
-    if (!similarUsers || similarUsers.length === 0) return [];
-
-    const userIds = [...new Set(similarUsers.map(s => s.user_id))].slice(0, 10);
-
-    const { data: theirWatches } = await supabase
-      .from('watch_history')
-      .select('film_id')
-      .in('user_id', userIds)
-      .not('film_id', 'in', `(${watchedIds.join(',')})`)
-      .limit(50);
-
-    if (!theirWatches || theirWatches.length === 0) return [];
-
-    const filmIds = [...new Set(theirWatches.map(w => w.film_id))].slice(0, 20);
-
-    const { data } = await supabase
-      .from('films')
-      .select('*')
-      .in('id', filmIds);
-
-    return data || [];
-  };
-
-  const getPopularInGenreRecommendations = async (genres: string[], watchedIds: string[]) => {
-    if (genres.length === 0) {
-      const { data } = await supabase
-        .from('films')
-        .select('*')
-        .not('id', 'in', `(${watchedIds.join(',')})`)
-        .order('views', { ascending: false })
-        .limit(20);
-      return data || [];
-    }
-
-    const { data } = await supabase
-      .from('films')
-      .select('*')
-      .in('genre', genres)
-      .not('id', 'in', `(${watchedIds.join(',')})`)
-      .order('views', { ascending: false })
-      .limit(20);
-
-    return data || [];
-  };
-
-  const getNewReleases = async (watchedIds: string[]) => {
-    const { data } = await supabase
-      .from('films')
-      .select('*')
-      .not('id', 'in', `(${watchedIds.join(',')})`)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    return data || [];
   };
 
   if (loading) {
@@ -245,29 +84,22 @@ export default function Explore() {
 
         {recommendations.forYou.length > 0 && (
           <FilmRow
-            title={user ? "Recommended For You" : "Popular Now"}
+            title={user ? "Recommended For You" : "Featured Content"}
             films={recommendations.forYou}
           />
         )}
 
-        {recommendations.basedOnHistory.length > 0 && (
+        {recommendations.trending.length > 0 && (
           <FilmRow
-            title="Because You Watched"
-            films={recommendations.basedOnHistory}
+            title="Trending This Week"
+            films={recommendations.trending}
           />
         )}
 
-        {recommendations.similarUsers.length > 0 && (
+        {recommendations.popular.length > 0 && (
           <FilmRow
-            title="Viewers Like You Also Enjoyed"
-            films={recommendations.similarUsers}
-          />
-        )}
-
-        {recommendations.popularInGenre.length > 0 && (
-          <FilmRow
-            title={user ? "Popular in Your Favorite Genres" : "Most Popular"}
-            films={recommendations.popularInGenre}
+            title="Popular on NaijaMation"
+            films={recommendations.popular}
           />
         )}
 
@@ -282,9 +114,6 @@ export default function Explore() {
           <div className="flex flex-col items-center justify-center py-20">
             <Film className="h-16 w-16 text-gray-600 mb-4" />
             <p className="text-gray-400 text-lg">No recommendations available yet</p>
-            <p className="text-gray-500 text-sm mt-2">
-              {user ? 'Start watching content to get personalized recommendations' : 'Sign in to get personalized recommendations'}
-            </p>
           </div>
         )}
       </div>

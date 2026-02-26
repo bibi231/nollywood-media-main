@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS films (
   poster_path TEXT,
   thumbnail_url TEXT DEFAULT '',
   video_url TEXT DEFAULT '',
+  hls_url TEXT DEFAULT '',
   views INTEGER DEFAULT 0,
   status TEXT DEFAULT 'published' CHECK (status IN ('draft', 'published', 'unlisted', 'archived')),
   uploaded_by UUID REFERENCES users(id),
@@ -257,6 +258,18 @@ CREATE TABLE IF NOT EXISTS watch_progress (
   UNIQUE(user_id, film_id)
 );
 
+-- ═══ AI Generation Logs (Rate Limiting) ═══
+CREATE TABLE IF NOT EXISTS ai_generation_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  prompt TEXT,
+  model TEXT,
+  result_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_logs_user_date ON ai_generation_logs(user_id, created_at);
+
 -- ═══ Subscription Plans ═══
 CREATE TABLE IF NOT EXISTS subscription_plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -304,11 +317,14 @@ ON CONFLICT (code) DO NOTHING;
 -- ═══ Indexes ═══
 CREATE INDEX IF NOT EXISTS idx_films_status ON films(status);
 CREATE INDEX IF NOT EXISTS idx_films_genre ON films(genre);
+CREATE INDEX IF NOT EXISTS idx_films_region ON films(setting_region);
 CREATE INDEX IF NOT EXISTS idx_films_created ON films(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_uploads_user ON user_content_uploads(user_id);
 CREATE INDEX IF NOT EXISTS idx_comments_film ON film_comments(film_id);
 CREATE INDEX IF NOT EXISTS idx_watch_history_user ON watch_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_playback_events_type_created ON playback_events(event_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_watch_progress_updated ON watch_progress(updated_at DESC);
 
 -- ═══ Seed admin user ═══
 INSERT INTO users (id, email, encrypted_password, display_name)

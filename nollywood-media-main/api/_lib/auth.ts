@@ -41,5 +41,6 @@ export function corsHeaders() {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co https://*.r2.cloudflarestorage.com; media-src 'self' https://*.r2.cloudflarestorage.com; connect-src 'self' https://*.supabase.co https://api.paystack.co;",
     };
 }

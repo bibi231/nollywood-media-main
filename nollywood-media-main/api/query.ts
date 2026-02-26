@@ -183,6 +183,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(401).json({ data: null, error: { message: 'Authentication required for write operations' } });
         }
 
+        // --- BOLA HARDENING START ---
+        // If not an admin, enforce ownership on protected tables
+        const isPersonalTable = AUTH_REQUIRED_TABLES.includes(safeTable);
+        const isAdmin = user?.role === 'admin';
+
+        if (isPersonalTable && !isAdmin && user) {
+            // 1. Force filter by user_id for select/update/delete/upsert
+            if (['select', 'update', 'delete', 'upsert'].includes(operation)) {
+                if (!body.filters) body.filters = [];
+                // Remove any existing user_id filters to prevent bypass
+                body.filters = body.filters.filter(f => f.column !== 'user_id');
+                // Inject the verified user_id
+                body.filters.push({ column: 'user_id', op: 'eq', value: user.userId });
+            }
+
+            // 2. Force user_id in data for insert/update/upsert
+            if (['insert', 'update', 'upsert'].includes(operation) && body.data) {
+                if (Array.isArray(body.data)) {
+                    body.data = body.data.map(d => ({ ...d, user_id: user.userId }));
+                } else {
+                    body.data = { ...body.data, user_id: user.userId };
+                }
+            }
+        }
+        // --- BOLA HARDENING END ---
+
         switch (operation) {
             case 'select': {
                 const selectCols = columns || '*';

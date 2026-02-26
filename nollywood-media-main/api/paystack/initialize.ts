@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { query } from '../_lib/db.js';
-import { corsHeaders } from '../_lib/auth.js';
+import { getUserFromRequest, corsHeaders } from '../_lib/auth.js';
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 
@@ -11,6 +11,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         const { planId, email, userId } = req.body;
+
+        // --- PAYMENT SECURITY HARDENING START ---
+        const user = getUserFromRequest(req);
+        if (!user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        // Verify that the userId in the request matches the authenticated user
+        // This prevents "Payment Metadata Poisoning"
+        if (userId !== user.userId) {
+            console.error('BOLA Attempt in Paystack Init:', { requestUserId: userId, authenticatedUserId: user.userId });
+            return res.status(403).json({ error: 'Unauthorized: Metadata mismatch' });
+        }
+        // --- PAYMENT SECURITY HARDENING END ---
 
         if (!email || !planId) {
             return res.status(400).json({ error: 'Email and planId are required' });

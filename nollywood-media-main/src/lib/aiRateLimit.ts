@@ -46,7 +46,7 @@ export async function getUserTier(userId: string): Promise<SubscriptionTier> {
 
 /**
  * Check if the user is allowed to generate an AI video.
- * Uses localStorage for client-side tracking (backed by the day boundary).
+ * Uses database ai_generation_logs for tamper-proof counting.
  */
 export async function checkAIRateLimit(userId: string): Promise<RateLimitResult> {
     const tier = await getUserTier(userId);
@@ -57,10 +57,23 @@ export async function checkAIRateLimit(userId: string): Promise<RateLimitResult>
         return { allowed: true, remaining: Infinity, limit, resetTime: getNextMidnight(), tier };
     }
 
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const storageKey = `ai_gen_count_${userId}_${today}`;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-    const currentCount = parseInt(localStorage.getItem(storageKey) || '0', 10);
+    // Query logs for the current day
+    const { count, error } = await supabase
+        .from('ai_generation_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', todayStart.toISOString());
+
+    if (error) {
+        console.error('Error checking AI rate limit:', error);
+        // Fallback to allowing if DB check fails, but log it
+        return { allowed: true, remaining: 1, limit, resetTime: getNextMidnight(), tier };
+    }
+
+    const currentCount = count || 0;
     const remaining = Math.max(0, limit - currentCount);
 
     return {
@@ -73,13 +86,15 @@ export async function checkAIRateLimit(userId: string): Promise<RateLimitResult>
 }
 
 /**
- * Record a successful generation attempt.
+ * Record a successful generation attempt in the database.
  */
-export function recordAIGeneration(userId: string): void {
-    const today = new Date().toISOString().split('T')[0];
-    const storageKey = `ai_gen_count_${userId}_${today}`;
-    const currentCount = parseInt(localStorage.getItem(storageKey) || '0', 10);
-    localStorage.setItem(storageKey, String(currentCount + 1));
+export async function recordAIGeneration(userId: string, opts?: { prompt?: string; model?: string; resultUrl?: string }): Promise<void> {
+    await supabase.from('ai_generation_logs').insert({
+        user_id: userId,
+        prompt: opts?.prompt,
+        model: opts?.model,
+        result_url: opts?.resultUrl
+    });
 }
 
 function getNextMidnight(): Date {

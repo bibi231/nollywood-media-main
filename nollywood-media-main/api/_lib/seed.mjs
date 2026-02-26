@@ -1,7 +1,19 @@
-// Create test accounts in Neon
 import { neon } from '@neondatabase/serverless';
+import fs from 'fs';
 
-const DATABASE_URL = 'postgresql://neondb_owner:npg_8X7fhiwZzTLW@ep-billowing-thunder-ai4bcdo3-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require';
+// Dynamically load database URL from .env.local if available, otherwise process.env
+let DATABASE_URL = process.env.NEON_DATABASE_URL;
+if (!DATABASE_URL && fs.existsSync('.env.local')) {
+    const envFile = fs.readFileSync('.env.local', 'utf8');
+    const match = envFile.match(/NEON_DATABASE_URL=([^\s]+)/);
+    if (match) DATABASE_URL = match[1];
+}
+
+if (!DATABASE_URL) {
+    console.error('❌ NEON_DATABASE_URL not found in environment or .env.local');
+    process.exit(1);
+}
+
 const sql = neon(DATABASE_URL);
 
 async function createAccounts() {

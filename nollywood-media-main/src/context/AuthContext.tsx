@@ -17,6 +17,7 @@ interface AuthContextType {
   tier: string;
   isAdmin: boolean;
   signOut: () => Promise<void>;
+  refreshTier: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   tier: 'free',
   isAdmin: false,
   signOut: async () => { },
+  refreshTier: async () => { },
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -123,8 +125,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const refreshTier = async () => {
+    if (user) {
+      await loadTier(user.id);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, tier, isAdmin, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, tier, isAdmin, signOut, refreshTier }}>
       {children}
     </AuthContext.Provider>
   );

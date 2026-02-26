@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { Crown, Check, X, CreditCard, Calendar, AlertCircle } from 'lucide-react';
+import { Crown, Check, CreditCard, Calendar, AlertCircle } from 'lucide-react';
 
 interface Plan {
   id: string;
@@ -29,10 +29,11 @@ interface CurrentSubscription {
 }
 
 export function Subscription() {
-  const { user } = useAuth();
+  const { user, refreshTier } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [currentSubscription, setCurrentSubscription] = useState<CurrentSubscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     loadPlans();
@@ -117,8 +118,9 @@ export function Subscription() {
       const result = await response.json();
 
       if (result.data?.status === 'success') {
-        alert('Subscription successful! Welcome to the club.');
-        loadCurrentSubscription();
+        await refreshTier();
+        await loadCurrentSubscription();
+        alert('Subscription successful! Welcome to the premium experience.');
       } else {
         throw new Error(result.error || 'Verification failed');
       }
@@ -127,6 +129,7 @@ export function Subscription() {
       alert('Payment verification failed. Please contact support.');
     } finally {
       setLoading(false);
+      setVerifying(false);
       // Clean up URL
       const url = new URL(window.location.href);
       url.searchParams.delete('reference');
@@ -138,7 +141,8 @@ export function Subscription() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const reference = params.get('reference');
-    if (reference) {
+    if (reference && !verifying) {
+      setVerifying(true);
       verifyPayment(reference);
     }
   }, []);
@@ -179,40 +183,45 @@ export function Subscription() {
   }
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Subscription Plans
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <div className="mb-12 text-center">
+        <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-4 tracking-tight">
+          Choose Your <span className="text-red-600 drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]">Experience</span>
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Choose the perfect plan for your viewing needs
+        <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+          Unlock premium Nollywood content, AI creation tools, and an ad-free cinematic journey.
         </p>
       </div>
 
       {currentSubscription && (
-        <div className="mb-8 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-blue-600 rounded-lg">
-              <Crown className="h-6 w-6 text-white" />
+        <div className="mb-12 p-1 bg-gradient-to-r from-red-600/20 to-transparent rounded-2xl border border-red-500/20 shadow-[0_0_20px_rgba(220,38,38,0.1)]">
+          <div className="p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6">
+            <div className="p-4 bg-red-600 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.4)]">
+              <Crown className="h-8 w-8 text-white" />
             </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                Current Plan: {currentSubscription.plan.name}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+            <div className="flex-1 text-center sm:text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                <h3 className="text-2xl font-bold text-white">
+                  Active Subscription: {currentSubscription.plan.name}
+                </h3>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border border-red-500/30">
+                  Premium
+                </span>
+              </div>
+              <p className="text-gray-400 mb-4 text-lg">
                 {currentSubscription.plan.description}
               </p>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
+              <div className="flex flex-wrap justify-center sm:justify-start items-center gap-6 text-sm text-gray-300">
                 {currentSubscription.current_period_end && (
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
+                    <Calendar className="h-4 w-4 text-red-500" />
                     <span>
                       Renews on {new Date(currentSubscription.current_period_end).toLocaleDateString()}
                     </span>
                   </div>
                 )}
                 {currentSubscription.cancel_at && (
-                  <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+                  <div className="flex items-center gap-2 text-amber-500">
                     <AlertCircle className="h-4 w-4" />
                     <span>
                       Cancels on {new Date(currentSubscription.cancel_at).toLocaleDateString()}
@@ -220,100 +229,98 @@ export function Subscription() {
                   </div>
                 )}
               </div>
-              {!currentSubscription.cancel_at && (
-                <button
-                  onClick={handleCancelSubscription}
-                  className="mt-4 text-sm text-red-600 dark:text-red-400 hover:underline"
-                >
-                  Cancel Subscription
-                </button>
-              )}
             </div>
+            {!currentSubscription.cancel_at && (
+              <button
+                onClick={handleCancelSubscription}
+                className="px-6 py-2 rounded-lg border border-gray-700 hover:border-red-500 hover:text-red-500 transition-all text-gray-400 text-sm"
+              >
+                Manage Plan
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {plans.map((plan) => {
           const isCurrentPlan = currentSubscription?.plan_id === plan.id;
+          const isPremium = plan.code === 'PREMIUM';
           const isFree = plan.price === 0;
 
           return (
             <div
               key={plan.id}
-              className={`relative bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition-transform hover:scale-105 ${plan.code === 'PREMIUM' ? 'ring-2 ring-red-600' : ''
+              className={`flex flex-col relative rounded-3xl overflow-hidden transition-all duration-300 hover:translate-y-[-8px] ${isPremium
+                ? 'bg-gradient-to-b from-gray-900 to-black border-2 border-red-600 shadow-[0_0_30px_rgba(220,38,38,0.15)]'
+                : 'bg-gray-900/40 border border-gray-800 hover:border-gray-700'
                 }`}
             >
-              {plan.code === 'PREMIUM' && (
-                <div className="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-                  POPULAR
+              {isPremium && (
+                <div className="bg-red-600 text-white text-center py-2 text-xs font-black tracking-widest uppercase">
+                  Most Popular
                 </div>
               )}
 
-              <div className="p-6">
-                <div className="mb-4">
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              <div className="p-8 flex-1 flex flex-col">
+                <div className="mb-8">
+                  <h3 className={`text-2xl font-black mb-2 ${isPremium ? 'text-white' : 'text-gray-200'}`}>
                     {plan.name}
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-sm text-gray-400 leading-relaxed">
                     {plan.description}
                   </p>
                 </div>
 
-                <div className="mb-6">
+                <div className="mb-8 p-6 rounded-2xl bg-black/40 border border-white/5">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                    <span className="text-5xl font-black text-white">
                       ₦{plan.price * 1500}
                     </span>
-                    <span className="text-gray-600 dark:text-gray-400">
+                    <span className="text-gray-500 font-medium">
                       /{plan.interval}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Approx. ${plan.price}</p>
                   {plan.trial_days > 0 && (
-                    <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                      {plan.trial_days} day free trial
-                    </p>
+                    <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-xs font-bold border border-green-500/20">
+                      <Check className="h-3 w-3" />
+                      {plan.trial_days} DAYS FREE TRIAL
+                    </div>
                   )}
                 </div>
 
-                <ul className="space-y-3 mb-6">
-                  {plan.features && Array.isArray(plan.features) && plan.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{feature}</span>
+                <ul className="space-y-4 mb-10 flex-1">
+                  {plan.features?.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      <div className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center border border-green-500/20">
+                        <Check className="h-3 w-3 text-green-400" />
+                      </div>
+                      <span className="text-sm text-gray-300">{feature}</span>
                     </li>
                   ))}
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                  <li className="flex items-start gap-3">
+                    <div className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center border border-green-500/20">
+                      <Check className="h-3 w-3 text-green-400" />
+                    </div>
+                    <span className="text-sm text-gray-300">
                       {plan.code === 'FREE' ? '1 AI Generation / day' : plan.code === 'BASIC' ? '5 AI Generations / day' : 'Unlimited AI Generations'}
                     </span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                      {plan.video_quality} quality
+                  <li className="flex items-start gap-3">
+                    <div className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center border border-green-500/20">
+                      <Check className="h-3 w-3 text-green-400" />
+                    </div>
+                    <span className="text-sm text-gray-300">
+                      High-quality streaming ({plan.video_quality})
                     </span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                      {plan.max_streams} simultaneous {plan.max_streams === 1 ? 'stream' : 'streams'}
-                    </span>
-                  </li>
-                  {!plan.ads_enabled ? (
-                    <li className="flex items-start gap-2">
-                      <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        No Ads (Cinematic Experience)
-                      </span>
-                    </li>
-                  ) : (
-                    <li className="flex items-start gap-2">
-                      <X className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        Ad-supported viewing
+                  {!plan.ads_enabled && (
+                    <li className="flex items-start gap-3">
+                      <div className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center border border-green-500/20">
+                        <Check className="h-3 w-3 text-green-400" />
+                      </div>
+                      <span className="text-sm text-gray-300 font-medium text-red-400">
+                        100% Ad-Free (Cinematic)
                       </span>
                     </li>
                   )}
@@ -321,15 +328,27 @@ export function Subscription() {
 
                 <button
                   onClick={() => handleSubscribe(plan)}
-                  disabled={isCurrentPlan}
-                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${isCurrentPlan
-                    ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                    : plan.code === 'PREMIUM'
-                      ? 'bg-red-600 hover:bg-red-700 text-white'
-                      : 'bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-gray-900'
+                  disabled={isCurrentPlan || verifying}
+                  className={`relative w-full py-4 px-6 rounded-2xl font-black text-sm tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden ${isCurrentPlan
+                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
+                    : isPremium
+                      ? 'bg-red-600 text-white hover:bg-red-700 shadow-[0_0_20px_rgba(220,38,38,0.3)] hover:shadow-[0_0_30px_rgba(220,38,38,0.5)]'
+                      : 'bg-white text-black hover:bg-gray-100'
                     }`}
                 >
-                  {isCurrentPlan ? 'Current Plan' : isFree ? 'Get Started' : 'Subscribe'}
+                  {isCurrentPlan ? (
+                    'Current Plan'
+                  ) : verifying ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      Initializing...
+                    </>
+                  ) : (
+                    <>
+                      {isFree ? 'Start Streaming' : 'Subscribe Now'}
+                      {!isFree && <CreditCard className="h-4 w-4 ml-1" />}
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -337,24 +356,20 @@ export function Subscription() {
         })}
       </div>
 
-      <div className="mt-12 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Payment Methods
+      <div className="mt-16 p-8 bg-gray-900/60 border border-white/5 rounded-3xl backdrop-blur-sm">
+        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <CreditCard className="h-5 w-5 text-red-500" />
+          Secure Payment Experience
         </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          We accept all major credit cards and local payment methods via Stripe and Paystack.
+        <p className="text-gray-400 mb-8 max-w-2xl">
+          Your transactions are protected with industry-standard TLS encryption. We partner with Stripe and Paystack to ensure seamless local and international payments.
         </p>
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-            <CreditCard className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Credit Card</span>
-          </div>
-          <div className="px-4 py-2 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Bank Transfer (Nigeria)</span>
-          </div>
-          <div className="px-4 py-2 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Mobile Money</span>
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {['Mastercard', 'Visa', 'Bank Transfer', 'Mobile Money'].map((method) => (
+            <div key={method} className="px-4 py-3 bg-black/40 rounded-xl border border-white/5 text-center transition-hover hover:border-red-500/30">
+              <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">{method}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

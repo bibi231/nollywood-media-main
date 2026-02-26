@@ -26,6 +26,7 @@ interface Film {
   director: string;
   cast_members: string;
   video_url: string;
+  hls_url?: string;
   studio_label: string;
   views: number;
 }
@@ -213,9 +214,10 @@ export default function WatchPage() {
             <BackButton fallback="/" label="Back" />
           </div>
           <div className={`bg-black rounded-xl overflow-hidden mb-4 relative ${theaterMode ? 'h-screen' : 'aspect-video'}`}>
-            {film.video_url ? (
+            {film.video_url || film.hls_url ? (
               <EnhancedVideoPlayer
                 src={film.video_url}
+                hlsSrc={film.hls_url}
                 poster={film.poster_url}
                 filmId={film.id}
               />

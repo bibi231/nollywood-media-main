@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
-  Settings, SkipForward, Rewind, PictureInPicture
+  Settings, SkipForward, Rewind, PictureInPicture,
+  HighDefinition
 } from 'lucide-react';
+import Hls from 'hls.js';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
 interface EnhancedVideoPlayerProps {
   src: string;
+  hlsSrc?: string;
   poster?: string;
   filmId: string;
   onTimeUpdate?: (position: number, duration: number) => void;
@@ -16,6 +19,7 @@ interface EnhancedVideoPlayerProps {
 
 export function EnhancedVideoPlayer({
   src,
+  hlsSrc,
   poster,
   filmId,
   onTimeUpdate,
@@ -23,6 +27,7 @@ export function EnhancedVideoPlayer({
 }: EnhancedVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const { user } = useAuth();
 
   const [playing, setPlaying] = useState(false);
@@ -35,10 +40,45 @@ export function EnhancedVideoPlayer({
   const [showSettings, setShowSettings] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [quality, setQuality] = useState('auto');
+  const [availableQualities, setAvailableQualities] = useState<{ id: number; height: number }[]>([]);
   const [buffered, setBuffered] = useState(0);
   const [sessionId] = useState(() => crypto.randomUUID());
 
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // ─── HLS Initialization ───
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (hlsSrc && Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+      });
+      hlsRef.current = hls;
+      hls.loadSource(hlsSrc);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        const levels = hls.levels.map((level, index) => ({
+          id: index,
+          height: level.height,
+        }));
+        setAvailableQualities(levels);
+      });
+
+      return () => {
+        hls.destroy();
+      };
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Native HLS support (Safari)
+      video.src = hlsSrc || src;
+    } else {
+      // Fallback to progressive MP4
+      video.src = src;
+    }
+  }, [hlsSrc, src]);
 
   useEffect(() => {
     loadSavedPosition();
@@ -194,7 +234,7 @@ export function EnhancedVideoPlayer({
         session_id: sessionId,
         event_type: eventType,
         duration_seconds: Math.floor(position),
-        quality: 'auto',
+        quality: quality,
         device_type: /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'mobile' : 'desktop'
       });
     } catch (error) {
@@ -282,21 +322,29 @@ export function EnhancedVideoPlayer({
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  const switchQuality = (levelId: number) => {
+    if (hlsRef.current) {
+      hlsRef.current.currentLevel = levelId;
+      setQuality(levelId === -1 ? 'auto' : `${hlsRef.current.levels[levelId].height}p`);
+    }
+    setShowSettings(false);
+  };
+
   const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full bg-black group"
+      className="relative w-full h-full bg-black group overflow-hidden"
       onMouseMove={handleMouseMove}
       onMouseLeave={() => playing && setShowControls(false)}
     >
       <video
         ref={videoRef}
-        src={src}
         poster={poster}
         className="w-full h-full"
         onClick={togglePlay}
+        playsInline
       />
 
       <div
@@ -317,27 +365,27 @@ export function EnhancedVideoPlayer({
               style={{ width: `${(currentTime / duration) * 100}%` }}
             />
             <div
-              className="absolute w-3 h-3 bg-red-600 rounded-full -top-1 transform -translate-x-1/2"
+              className="absolute w-3 h-3 bg-red-600 rounded-full -top-1 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
               style={{ left: `${(currentTime / duration) * 100}%` }}
             />
           </div>
 
           <div className="flex items-center justify-between text-white">
             <div className="flex items-center gap-2">
-              <button onClick={togglePlay} className="p-2 hover:bg-white/20 rounded">
-                {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+              <button onClick={togglePlay} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                {playing ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
               </button>
 
-              <button onClick={() => skip(-10)} className="p-2 hover:bg-white/20 rounded">
+              <button onClick={() => skip(-10)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
                 <Rewind className="w-4 h-4" />
               </button>
 
-              <button onClick={() => skip(10)} className="p-2 hover:bg-white/20 rounded">
+              <button onClick={() => skip(10)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
                 <SkipForward className="w-4 h-4" />
               </button>
 
               <div className="flex items-center gap-2 group/volume">
-                <button onClick={toggleMute} className="p-2 hover:bg-white/20 rounded">
+                <button onClick={toggleMute} className="p-2 hover:bg-white/20 rounded-full transition-colors">
                   {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </button>
                 <input
@@ -352,11 +400,11 @@ export function EnhancedVideoPlayer({
                     if (videoRef.current) videoRef.current.volume = val;
                     if (val > 0) setMuted(false);
                   }}
-                  className="w-0 group-hover/volume:w-20 transition-all"
+                  className="w-0 group-hover/volume:w-20 transition-all accent-red-600"
                 />
               </div>
 
-              <span className="text-sm">
+              <span className="text-sm font-medium tabular-nums">
                 {formatTime(currentTime)} / {formatTime(duration)}
               </span>
             </div>
@@ -364,38 +412,66 @@ export function EnhancedVideoPlayer({
             <div className="flex items-center gap-2 relative">
               <button
                 onClick={() => setShowSettings(!showSettings)}
-                className="p-2 hover:bg-white/20 rounded"
+                className="p-2 hover:bg-white/20 rounded-full transition-colors"
               >
-                <Settings className="w-4 h-4" />
+                <Settings className={`w-4 h-4 ${showSettings ? 'rotate-45' : ''} transition-transform`} />
               </button>
 
               {showSettings && (
-                <div className="absolute bottom-12 right-0 bg-gray-900 rounded-lg shadow-xl p-2 space-y-1 min-w-[150px]">
-                  <div className="text-xs font-semibold text-gray-400 px-2 py-1">Playback Speed</div>
-                  {speeds.map((speed) => (
-                    <button
-                      key={speed}
-                      onClick={() => {
-                        setPlaybackRate(speed);
-                        if (videoRef.current) videoRef.current.playbackRate = speed;
-                        setShowSettings(false);
-                      }}
-                      className={`w-full text-left px-2 py-1 rounded hover:bg-gray-800 text-sm ${playbackRate === speed ? 'text-red-500' : 'text-white'
-                        }`}
-                    >
-                      {speed}x {speed === 1 && '(Normal)'}
-                    </button>
-                  ))}
+                <div className="absolute bottom-12 right-0 bg-black/95 backdrop-blur-md rounded-xl border border-white/10 shadow-2xl p-2 space-y-3 min-w-[180px]">
+                  {availableQualities.length > 0 && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider font-bold text-gray-500 px-2 mb-1 flex items-center gap-1">
+                        <HighDefinition className="w-3 h-3" /> Quality
+                      </div>
+                      <button
+                        onClick={() => switchQuality(-1)}
+                        className={`w-full text-left px-3 py-1.5 rounded-lg hover:bg-white/10 text-xs transition-colors ${quality === 'auto' ? 'bg-red-600/20 text-red-500 font-bold' : 'text-gray-300'}`}
+                      >
+                        Auto
+                      </button>
+                      {availableQualities.map((q) => (
+                        <button
+                          key={q.id}
+                          onClick={() => switchQuality(q.id)}
+                          className={`w-full text-left px-3 py-1.5 rounded-lg hover:bg-white/10 text-xs transition-colors ${quality === `${q.height}p` ? 'bg-red-600/20 text-red-500 font-bold' : 'text-gray-300'}`}
+                        >
+                          {q.height}p
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="h-px bg-white/10 mx-2" />
+
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider font-bold text-gray-500 px-2 mb-1">Playback Speed</div>
+                    <div className="grid grid-cols-2 gap-1">
+                      {speeds.map((speed) => (
+                        <button
+                          key={speed}
+                          onClick={() => {
+                            setPlaybackRate(speed);
+                            if (videoRef.current) videoRef.current.playbackRate = speed;
+                            setShowSettings(false);
+                          }}
+                          className={`text-center px-2 py-1.5 rounded-lg hover:bg-white/10 text-xs transition-colors ${playbackRate === speed ? 'bg-red-600/20 text-red-500 font-bold' : 'text-gray-300'}`}
+                        >
+                          {speed}x
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
               {document.pictureInPictureEnabled && (
-                <button onClick={enterPiP} className="p-2 hover:bg-white/20 rounded">
+                <button onClick={enterPiP} className="p-2 hover:bg-white/20 rounded-full transition-colors">
                   <PictureInPicture className="w-4 h-4" />
                 </button>
               )}
 
-              <button onClick={toggleFullscreen} className="p-2 hover:bg-white/20 rounded">
+              <button onClick={toggleFullscreen} className="p-2 hover:bg-white/20 rounded-full transition-colors">
                 {fullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
               </button>
             </div>
