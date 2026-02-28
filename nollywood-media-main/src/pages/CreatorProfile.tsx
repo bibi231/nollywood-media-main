@@ -134,60 +134,60 @@ export default function CreatorProfile() {
     }
 
     return (
-                    <div className="h-48 bg-gradient-to-br from-red-600 via-red-800 to-gray-900">
-                        {creator.channel_avatar && (
-                            <img src={creator.channel_avatar} alt="" className="w-full h-full object-cover opacity-30" />
+        <>
+            <div className="h-48 bg-gradient-to-br from-red-600 via-red-800 to-gray-900">
+                {creator.channel_avatar && (
+                    <img src={creator.channel_avatar} alt="" className="w-full h-full object-cover opacity-30" />
+                )}
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+                <div className="flex items-end gap-4">
+                    <div className="w-20 h-20 rounded-full bg-gray-300 dark:bg-gray-700 border-4 border-white overflow-hidden flex-shrink-0">
+                        {creator.channel_avatar ? (
+                            <img src={creator.channel_avatar} alt={creator.channel_name} className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-gray-500">
+                                {creator.channel_name?.[0]}
+                            </div>
                         )}
                     </div>
-                    <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
-                        <div className="flex items-end gap-4">
-                            <div className="w-20 h-20 rounded-full bg-gray-300 dark:bg-gray-700 border-4 border-white overflow-hidden flex-shrink-0">
-                                {creator.channel_avatar ? (
-                                    <img src={creator.channel_avatar} alt={creator.channel_name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-gray-500">
-                                        {creator.channel_name?.[0]}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                                    {creator.channel_name}
-                                    {creator.verification_status === 'verified' && (
-                                        <CheckCircle className="h-5 w-5 text-blue-400 fill-blue-400" />
-                                    )}
-                                </h1>
-                                <div className="flex items-center gap-4 mt-1 text-sm text-gray-300">
-                                    <span className="flex items-center gap-1">
-                                        <Users className="h-4 w-4" />
-                                        {creator.subscriber_count?.toLocaleString() || 0} subscribers
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <FilmIcon className="h-4 w-4" />
-                                        {creatorFilms.length} videos
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <Calendar className="h-4 w-4" />
-                                        Joined {new Date(creator.created_at).getFullYear()}
-                                    </span>
-                                </div>
-                            </div>
-                            <button
-                                onClick={handleFollowToggle}
-                                className={`flex-shrink-0 flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${
-    isFollowing
-        ? 'bg-white/20 backdrop-blur text-white hover:bg-white/30'
-        : 'bg-red-600 hover:bg-red-700 text-white'
-}`}
-                            >
-                                {isFollowing ? <UserCheck className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
-                                {isFollowing ? 'Following' : 'Follow'}
-                            </button>
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                            {creator.channel_name}
+                            {creator.verification_status === 'verified' && (
+                                <CheckCircle className="h-5 w-5 text-blue-400 fill-blue-400" />
+                            )}
+                        </h1>
+                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-300">
+                            <span className="flex items-center gap-1">
+                                <Users className="h-4 w-4" />
+                                {creator.subscriber_count?.toLocaleString() || 0} subscribers
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <FilmIcon className="h-4 w-4" />
+                                {creatorFilms.length} videos
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                Joined {new Date(creator.created_at).getFullYear()}
+                            </span>
                         </div>
                     </div>
-                </div >
+                    <button
+                        onClick={handleFollowToggle}
+                        className={`flex-shrink-0 flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${isFollowing
+                            ? 'bg-white/20 backdrop-blur text-white hover:bg-white/30'
+                            : 'bg-red-600 hover:bg-red-700 text-white'
+                            }`}
+                    >
+                        {isFollowing ? <UserCheck className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+                        {isFollowing ? 'Following' : 'Follow'}
+                    </button>
+                </div>
+            </div>
+        </div >
 
-        {/* About */ }
+            {/* About */ }
     {
         creator.channel_description && (
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-8">
@@ -250,7 +250,6 @@ export default function CreatorProfile() {
         </div>
     )
     }
-            </div >
-        </div >
+        </>
     );
 }
