@@ -44,6 +44,7 @@ const GenrePage = lazy(() => import("./pages/GenrePage"));
 const RegionPage = lazy(() => import("./pages/RegionPage"));
 const SearchPage = lazy(() => import("./pages/SearchPage"));
 const WatchPage = lazy(() => import("./pages/WatchPage"));
+const Music = lazy(() => import("./pages/Music"));
 const ContentTypePage = lazy(() => import("./pages/ContentTypePage"));
 const Catalog = lazy(() => import("./components/Catalog"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin").then(m => ({ default: m.AdminLogin })));
@@ -225,6 +226,7 @@ export default function App() {
                           <Route path="/catalog" element={<Catalog />} />
                           <Route path="/genre/:genre" element={<GenrePage />} />
                           <Route path="/region/:name" element={<RegionPage />} />
+                          <Route path="/content/music" element={<Music />} />
                           <Route path="/content/:type" element={<ContentTypePage />} />
                           <Route path="/search" element={<SearchPage />} />
                           <Route path="/watch/:id" element={<WatchPage />} />

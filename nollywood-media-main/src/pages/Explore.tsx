@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FilmRow } from '../components/FilmRow';
-import { Film, Home } from 'lucide-react';
+import { Film, Home, Clapperboard, Sparkles, Zap, Heart, Ghost, Music as MusicIcon, Compass } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function Explore() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [recommendations, setRecommendations] = useState<{
     forYou: any[];
     popular: any[];
@@ -80,6 +82,40 @@ export default function Explore() {
           <p className="text-gray-400">
             {user ? 'Personalized recommendations just for you' : 'Discover amazing content'}
           </p>
+        </div>
+
+        {/* 3D Neon Genre Grid */}
+        <div className="px-4 sm:px-6 lg:px-8 mb-16">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[
+              { id: 'action', label: 'Action', icon: Zap, color: 'from-orange-500 to-red-600', shadow: 'shadow-orange-500/20' },
+              { id: 'drama', label: 'Drama', icon: Clapperboard, color: 'from-purple-500 to-indigo-600', shadow: 'shadow-purple-500/20' },
+              { id: 'comedy', label: 'Comedy', icon: Sparkles, color: 'from-amber-400 to-yellow-600', shadow: 'shadow-amber-500/20' },
+              { id: 'romance', label: 'Romance', icon: Heart, color: 'from-pink-500 to-rose-600', shadow: 'shadow-pink-500/20' },
+              { id: 'horror', label: 'Horror', icon: Ghost, color: 'from-emerald-500 to-teal-700', shadow: 'shadow-emerald-500/20' },
+              { id: 'music', label: 'Music', icon: MusicIcon, color: 'from-blue-500 to-cyan-600', shadow: 'shadow-blue-500/20' },
+            ].map((genre, i) => {
+              const Icon = genre.icon;
+              return (
+                <motion.div
+                  key={genre.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  whileHover={{ y: -5, scale: 1.02 }}
+                  onClick={() => navigate(genre.id === 'music' ? '/content/music' : `/genre/${genre.id}`)}
+                  className={`relative overflow-hidden rounded-2xl cursor-pointer group bg-gradient-to-br ${genre.color} p-[1px] ${genre.shadow} hover:shadow-xl transition-all duration-300`}
+                >
+                  <div className="absolute inset-0 bg-white/20 dark:bg-black/20 group-hover:bg-transparent transition-colors z-10" />
+                  <div className="relative h-24 lg:h-32 bg-gray-900 rounded-[15px] flex flex-col items-center justify-center gap-2 overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Icon className="h-8 w-8 text-white z-20" />
+                    <span className="font-bold text-white z-20 tracking-wide">{genre.label}</span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
 
         {recommendations.forYou.length > 0 && (
