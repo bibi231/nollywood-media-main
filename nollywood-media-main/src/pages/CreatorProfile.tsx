@@ -184,72 +184,68 @@ export default function CreatorProfile() {
                         {isFollowing ? 'Following' : 'Follow'}
                     </button>
                 </div>
-            </div>
-        </div >
 
-            {/* About */ }
-    {
-        creator.channel_description && (
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-8">
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">About</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{creator.channel_description}</p>
-            </div>
-        )
-    }
-
-    {/* Tabs */ }
-    <div className="flex items-center gap-6 border-b border-gray-200 dark:border-gray-800 mb-6">
-        <button
-            onClick={() => setActiveTab('videos')}
-            className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'videos' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
-        >
-            Videos ({creatorFilms.length})
-        </button>
-        <button
-            onClick={() => setActiveTab('community')}
-            className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'community' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
-        >
-            Community
-        </button>
-    </div>
-
-    {/* Content */ }
-    {
-        activeTab === 'videos' ? (
-            <div className="mb-8">
-                {creatorFilms.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {creatorFilms.map((film) => (
-                            <div key={film.id} className="cursor-pointer" onClick={() => navigate(`/watch/${film.id}`)}>
-                                <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden mb-2">
-                                    <img
-                                        src={film.poster_url || '/placeholder.jpg'}
-                                        alt={film.title}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                                <h3 className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2">{film.title}</h3>
-                                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    <span>{film.views?.toLocaleString() || 0} views</span>
-                                    <span>•</span>
-                                    <span>{film.release_year}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <FilmIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                        <p className="text-gray-600 dark:text-gray-400">No videos uploaded yet</p>
+                {/* About */}
+                {creator.channel_description && (
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-8">
+                        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">About</h2>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{creator.channel_description}</p>
                     </div>
                 )}
-            </div>
-        ) : (
-        <div className="mb-8">
-            <CommunityPosts creatorId={creator.user_id} isOwner={user?.id === creator.user_id} />
-        </div>
-    )
-    }
-        </>
-    );
+
+                {/* Tabs */}
+                <div className="flex items-center gap-6 border-b border-gray-200 dark:border-gray-800 mb-6">
+                    <button
+                        onClick={() => setActiveTab('videos')}
+                        className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'videos' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                    >
+                        Videos ({creatorFilms.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('community')}
+                        className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'community' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                    >
+                        Community
+                    </button>
+                </div>
+
+                {/* Content */}
+                {
+                    activeTab === 'videos' ? (
+                        <div className="mb-8">
+                            {creatorFilms.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    {creatorFilms.map((film) => (
+                                        <div key={film.id} className="cursor-pointer" onClick={() => navigate(`/watch/${film.id}`)}>
+                                            <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden mb-2">
+                                                <img
+                                                    src={film.poster_url || '/placeholder.jpg'}
+                                                    alt={film.title}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                            <h3 className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2">{film.title}</h3>
+                                            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                <span>{film.views?.toLocaleString() || 0} views</span>
+                                                <span>•</span>
+                                                <span>{film.release_year}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                    <FilmIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                                    <p className="text-gray-600 dark:text-gray-400">No videos uploaded yet</p>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="mb-8">
+                            <CommunityPosts creatorId={creator.user_id} isOwner={user?.id === creator.user_id} />
+                        </div>
+                    )
+                }
+            </>
+            );
 }
