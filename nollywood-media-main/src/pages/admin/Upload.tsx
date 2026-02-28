@@ -308,7 +308,7 @@ export function AdminUpload() {
                 ))}
               </select>
               <button
-                onClick={() => navigate('/admin/films/new')}
+                onClick={() => navigate('/admin/cms/films/new')}
                 className="mt-2 text-sm text-blue-400 hover:text-blue-300"
               >
                 + Create new film
@@ -316,11 +316,10 @@ export function AdminUpload() {
             </div>
 
             <div
-              className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
-                dragActive
+              className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${dragActive
                   ? 'border-blue-500 bg-blue-500/10'
                   : 'border-slate-700 hover:border-slate-600 hover:bg-slate-800/50'
-              }`}
+                }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}

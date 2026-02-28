@@ -76,7 +76,7 @@ export function AdminFilms() {
           <p className="mt-2 text-slate-400">Manage your film catalog</p>
         </div>
         <Link
-          to="/admin/films/new"
+          to="/admin/cms/films/new"
           className="flex items-center space-x-2 rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 transition-colors"
         >
           <Plus className="h-5 w-5" />

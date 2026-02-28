@@ -96,7 +96,7 @@ export default function Home() {
             There are no published films yet. Upload your first film to get started!
           </p>
           <button
-            onClick={() => navigate('/admin/films/new')}
+            onClick={() => navigate('/admin/cms/films/new')}
             className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
           >
             Upload Your First Film

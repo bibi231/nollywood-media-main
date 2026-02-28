@@ -1,7 +1,7 @@
 import { useState, lazy, Suspense, Component, ErrorInfo, ReactNode } from "react";
 import { CatalogProvider } from "./context/CatalogProvider";
 import { AuthProvider } from "./context/AuthContext";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { Footer } from "./components/Footer";
@@ -48,7 +48,6 @@ const Music = lazy(() => import("./pages/Music"));
 const ContentTypePage = lazy(() => import("./pages/ContentTypePage"));
 const Catalog = lazy(() => import("./components/Catalog"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin").then(m => ({ default: m.AdminLogin })));
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const ModerationPortal = lazy(() => import("./pages/admin/ModerationPortal"));
 const AnalyticsPortal = lazy(() => import("./pages/admin/AnalyticsPortal"));
 const AccountLayout = lazy(() => import("./pages/account/AccountLayout").then(m => ({ default: m.AccountLayout })));
@@ -130,7 +129,7 @@ export default function App() {
 
                   <Route path="/admin" element={
                     <ProtectedRoute requireAdmin>
-                      <AdminDashboard />
+                      <Navigate to="/admin/cms" replace />
                     </ProtectedRoute>
                   } />
 
