@@ -587,137 +587,136 @@ export default function WatchPage() {
 
           <Comments filmId={film.id} filmTitle={film.title} />
         </div>
-      </div>
 
-      <div className="hidden lg:block w-96 px-4 py-6">
-        <div className="mb-6">
-          <AdSpace variant="rectangle" />
-        </div>
+        <div className="hidden lg:block w-96 px-4 py-6">
+          <div className="mb-6">
+            <AdSpace variant="rectangle" />
+          </div>
 
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Related</h3>
-        <div className="space-y-3">
-          {relatedFilms.slice(0, 8).map((relatedFilm) => (
-            <div key={relatedFilm.id} className="flex gap-2 cursor-pointer" onClick={() => navigate(`/watch/${relatedFilm.id}`)}>
-              <div className="w-40 aspect-video bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                <img
-                  src={relatedFilm.poster_url || '/placeholder.jpg'}
-                  alt={relatedFilm.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1 group-hover:text-red-500 transition-colors">
-                  {relatedFilm.title}
-                </h4>
-                <p className="text-xs text-gray-600">
-                  <Link
-                    to={`/creator/${(relatedFilm as any).user_id || relatedFilm.studio_label}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="hover:text-red-500 hover:underline transition-colors"
-                  >
-                    {relatedFilm.studio_label}
-                  </Link>
-                </p>
-                <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
-                  <Eye className="w-3 h-3" />
-                  <span>{relatedFilm.views?.toLocaleString() || '0'} views</span>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Related</h3>
+          <div className="space-y-3">
+            {relatedFilms.slice(0, 8).map((relatedFilm) => (
+              <div key={relatedFilm.id} className="flex gap-2 cursor-pointer" onClick={() => navigate(`/watch/${relatedFilm.id}`)}>
+                <div className="w-40 aspect-video bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                  <img
+                    src={relatedFilm.poster_url || '/placeholder.jpg'}
+                    alt={relatedFilm.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1 group-hover:text-red-500 transition-colors">
+                    {relatedFilm.title}
+                  </h4>
+                  <p className="text-xs text-gray-600">
+                    <Link
+                      to={`/creator/${(relatedFilm as any).user_id || relatedFilm.studio_label}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="hover:text-red-500 hover:underline transition-colors"
+                    >
+                      {relatedFilm.studio_label}
+                    </Link>
+                  </p>
+                  <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
+                    <Eye className="w-3 h-3" />
+                    <span>{relatedFilm.views?.toLocaleString() || '0'} views</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-
-    {
-    showTipModal && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-        <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-800 shadow-2xl relative">
-          <button onClick={() => setShowTipModal(false)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-          <div className="flex flex-col items-center mb-6">
-            <div className="bg-yellow-500/20 p-4 rounded-full mb-4">
-              <Gift className="w-10 h-10 text-yellow-500" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center">Support {film?.studio_label}</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-2">Your tip goes directly to the creator to help them make more incredible Nollywood content.</p>
-          </div>
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            {[500, 1000, 2500, 5000, 10000].map(amt => (
-              <button
-                key={amt}
-                onClick={() => setTipAmount(amt)}
-                className={`py-3 rounded-xl font-bold text-sm transition-all border ${tipAmount === amt ? 'bg-yellow-500 text-black border-yellow-500' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-              >
-                ₦{amt.toLocaleString()}
-              </button>
             ))}
-            <div className="col-span-3 mt-2 relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₦</span>
-              <input
-                type="number"
-                value={tipAmount}
-                onChange={e => setTipAmount(Number(e.target.value))}
-                className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl py-3 pl-10 pr-4 text-gray-900 dark:text-white focus:ring-2 focus:ring-yellow-500 outline-none font-bold"
-              />
-            </div>
           </div>
-          <button
-            onClick={handleTip}
-            disabled={isTipping || tipAmount < 100}
-            className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-bold text-lg hover:from-yellow-500 hover:to-yellow-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-yellow-500/20"
-          >
-            {isTipping ? 'Connecting to Paystack...' : `Send ₦${tipAmount.toLocaleString()}`}
-          </button>
         </div>
       </div>
-    )
-  }
 
-  {
-    tipSuccessToast && (
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-6 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2 animate-bounce z-50">
-        <Gift className="w-5 h-5" />
-        Thank you for supporting {film?.studio_label}!
-      </div>
-    )
-  }
-
-  {/* Report Modal */ }
-  {
-    showReportModal && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowReportModal(false)}>
-        <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Report Content</h2>
-            <button onClick={() => setShowReportModal(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-          {reportSubmitted ? (
-            <div className="p-8 text-center">
-              <Check className="w-12 h-12 text-green-500 mx-auto mb-3" />
-              <p className="text-gray-900 dark:text-white font-semibold">Report Submitted</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Thank you. We'll review this content.</p>
+      {
+        showTipModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-800 shadow-2xl relative">
+              <button onClick={() => setShowTipModal(false)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex flex-col items-center mb-6">
+                <div className="bg-yellow-500/20 p-4 rounded-full mb-4">
+                  <Gift className="w-10 h-10 text-yellow-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center">Support {film?.studio_label}</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-2">Your tip goes directly to the creator to help them make more incredible Nollywood content.</p>
+              </div>
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                {[500, 1000, 2500, 5000, 10000].map(amt => (
+                  <button
+                    key={amt}
+                    onClick={() => setTipAmount(amt)}
+                    className={`py-3 rounded-xl font-bold text-sm transition-all border ${tipAmount === amt ? 'bg-yellow-500 text-black border-yellow-500' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                  >
+                    ₦{amt.toLocaleString()}
+                  </button>
+                ))}
+                <div className="col-span-3 mt-2 relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₦</span>
+                  <input
+                    type="number"
+                    value={tipAmount}
+                    onChange={e => setTipAmount(Number(e.target.value))}
+                    className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl py-3 pl-10 pr-4 text-gray-900 dark:text-white focus:ring-2 focus:ring-yellow-500 outline-none font-bold"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleTip}
+                disabled={isTipping || tipAmount < 100}
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-bold text-lg hover:from-yellow-500 hover:to-yellow-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-yellow-500/20"
+              >
+                {isTipping ? 'Connecting to Paystack...' : `Send ₦${tipAmount.toLocaleString()}`}
+              </button>
             </div>
-          ) : (
-            <div className="p-4 space-y-2">
-              {['Inappropriate content', 'Copyright infringement', 'Spam or misleading', 'Harmful or dangerous', 'Other'].map((reason) => (
-                <button
-                  key={reason}
-                  onClick={() => handleReport(reason)}
-                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm transition-colors"
-                >
-                  {reason}
+          </div>
+        )
+      }
+
+      {
+        tipSuccessToast && (
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-6 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2 animate-bounce z-50">
+            <Gift className="w-5 h-5" />
+            Thank you for supporting {film?.studio_label}!
+          </div>
+        )
+      }
+
+      {/* Report Modal */}
+      {
+        showReportModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowReportModal(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Report Content</h2>
+                <button onClick={() => setShowReportModal(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-gray-500" />
                 </button>
-              ))}
+              </div>
+              {reportSubmitted ? (
+                <div className="p-8 text-center">
+                  <Check className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                  <p className="text-gray-900 dark:text-white font-semibold">Report Submitted</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Thank you. We'll review this content.</p>
+                </div>
+              ) : (
+                <div className="p-4 space-y-2">
+                  {['Inappropriate content', 'Copyright infringement', 'Spam or misleading', 'Harmful or dangerous', 'Other'].map((reason) => (
+                    <button
+                      key={reason}
+                      onClick={() => handleReport(reason)}
+                      className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm transition-colors"
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-  </div >
+          </div>
+        )
+      }
+    </div >
   );
 }
