@@ -21,23 +21,10 @@ export default defineConfig({
     exclude: ['lucide-react'],
   },
   build: {
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-              return 'react-vendor';
-            }
-            if (id.includes('lucide-react')) {
-              return 'icons';
-            }
-            if (id.includes('@supabase') || id.includes('hls.js')) {
-              return 'heavy-libs';
-            }
-            return 'vendor'; // Fallback for other node_modules
-          }
-        }
+        // Letting Vite/Rollup handle chunking natively to prevent circular dependency bugs
       }
     },
     minify: 'esbuild',
