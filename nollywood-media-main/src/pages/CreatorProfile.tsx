@@ -134,118 +134,124 @@ export default function CreatorProfile() {
     }
 
     return (
-        <>
-            <div className="h-48 bg-gradient-to-br from-red-600 via-red-800 to-gray-900">
-                {creator.channel_avatar && (
-                    <img src={creator.channel_avatar} alt="" className="w-full h-full object-cover opacity-30" />
-                )}
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
-                <div className="flex items-end gap-4">
-                    <div className="w-20 h-20 rounded-full bg-gray-300 dark:bg-gray-700 border-4 border-white overflow-hidden flex-shrink-0">
-                        {creator.channel_avatar ? (
-                            <img src={creator.channel_avatar} alt={creator.channel_name} className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-gray-500">
-                                {creator.channel_name?.[0]}
-                            </div>
-                        )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                            {creator.channel_name}
-                            {creator.verification_status === 'verified' && (
-                                <CheckCircle className="h-5 w-5 text-blue-400 fill-blue-400" />
-                            )}
-                        </h1>
-                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-300">
-                            <span className="flex items-center gap-1">
-                                <Users className="h-4 w-4" />
-                                {creator.subscriber_count?.toLocaleString() || 0} subscribers
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <FilmIcon className="h-4 w-4" />
-                                {creatorFilms.length} videos
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4" />
-                                Joined {new Date(creator.created_at).getFullYear()}
-                            </span>
-                        </div>
-                    </div>
-                    <button
-                        onClick={handleFollowToggle}
-                        className={`flex-shrink-0 flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${isFollowing
-                            ? 'bg-white/20 backdrop-blur text-white hover:bg-white/30'
-                            : 'bg-red-600 hover:bg-red-700 text-white'
-                            }`}
-                    >
-                        {isFollowing ? <UserCheck className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
-                        {isFollowing ? 'Following' : 'Follow'}
-                    </button>
+        <div className="bg-black min-h-screen pt-14 lg:pl-60 text-white">
+            <div className="relative border-b border-gray-800">
+                {/* Header Banner */}
+                <div className="h-48 bg-gradient-to-br from-red-600 via-red-800 to-gray-900">
+                    {creator.channel_avatar && (
+                        <img src={creator.channel_avatar} alt="" className="w-full h-full object-cover opacity-30" />
+                    )}
                 </div>
 
+                {/* Profile Info Overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+                    <div className="flex items-end gap-4">
+                        <div className="w-20 h-20 rounded-full bg-gray-300 dark:bg-gray-700 border-4 border-white overflow-hidden flex-shrink-0">
+                            {creator.channel_avatar ? (
+                                <img src={creator.channel_avatar} alt={creator.channel_name} className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-gray-500">
+                                    {creator.channel_name?.[0]}
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                                {creator.channel_name}
+                                {creator.verification_status === 'verified' && (
+                                    <CheckCircle className="h-5 w-5 text-blue-400 fill-blue-400" />
+                                )}
+                            </h1>
+                            <div className="flex items-center gap-4 mt-1 text-sm text-gray-300">
+                                <span className="flex items-center gap-1">
+                                    <Users className="h-4 w-4" />
+                                    {creator.subscriber_count?.toLocaleString() || 0} subscribers
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <FilmIcon className="h-4 w-4" />
+                                    {creatorFilms.length} videos
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <Calendar className="h-4 w-4" />
+                                    Joined {new Date(creator.created_at).getFullYear()}
+                                </span>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleFollowToggle}
+                            className={`flex-shrink-0 flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${isFollowing
+                                ? 'bg-white/20 backdrop-blur text-white hover:bg-white/30'
+                                : 'bg-red-600 hover:bg-red-700 text-white'
+                                }`}
+                        >
+                            {isFollowing ? <UserCheck className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+                            {isFollowing ? 'Following' : 'Follow'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="p-6">
                 {/* About */}
                 {creator.channel_description && (
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-8">
-                        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">About</h2>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{creator.channel_description}</p>
+                    <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-8">
+                        <h2 className="text-sm font-semibold text-white mb-2">About</h2>
+                        <p className="text-sm text-gray-400">{creator.channel_description}</p>
                     </div>
                 )}
 
                 {/* Tabs */}
-                <div className="flex items-center gap-6 border-b border-gray-200 dark:border-gray-800 mb-6">
+                <div className="flex items-center gap-6 border-b border-gray-800 mb-6">
                     <button
                         onClick={() => setActiveTab('videos')}
-                        className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'videos' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                        className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'videos' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-white'}`}
                     >
                         Videos ({creatorFilms.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('community')}
-                        className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'community' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                        className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'community' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-white'}`}
                     >
                         Community
                     </button>
                 </div>
 
                 {/* Content */}
-                {
-                    activeTab === 'videos' ? (
-                        <div className="mb-8">
-                            {creatorFilms.length > 0 ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                    {creatorFilms.map((film) => (
-                                        <div key={film.id} className="cursor-pointer" onClick={() => navigate(`/watch/${film.id}`)}>
-                                            <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden mb-2">
-                                                <img
-                                                    src={film.poster_url || '/placeholder.jpg'}
-                                                    alt={film.title}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                            <h3 className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2">{film.title}</h3>
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                <span>{film.views?.toLocaleString() || 0} views</span>
-                                                <span>•</span>
-                                                <span>{film.release_year}</span>
-                                            </div>
+                {activeTab === 'videos' ? (
+                    <div className="mb-8">
+                        {creatorFilms.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {creatorFilms.map((film) => (
+                                    <div key={film.id} className="cursor-pointer group" onClick={() => navigate(`/watch/${film.id}`)}>
+                                        <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden mb-2 relative">
+                                            <img
+                                                src={film.poster_url || '/placeholder.jpg'}
+                                                alt={film.title}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                            />
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                    <FilmIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                                    <p className="text-gray-600 dark:text-gray-400">No videos uploaded yet</p>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="mb-8">
-                            <CommunityPosts creatorId={creator.user_id} isOwner={user?.id === creator.user_id} />
-                        </div>
-                    )
-                }
-            </>
-            );
+                                        <h3 className="font-semibold text-sm text-white line-clamp-2 group-hover:text-red-500 transition-colors">{film.title}</h3>
+                                        <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                                            <span>{film.views?.toLocaleString() || 0} views</span>
+                                            <span>•</span>
+                                            <span>{film.release_year}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 bg-gray-900 border border-gray-800 rounded-lg">
+                                <FilmIcon className="h-12 w-12 text-gray-600 mx-auto mb-3" />
+                                <p className="text-gray-400">No videos uploaded yet</p>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="mb-8">
+                        <CommunityPosts creatorId={creator.user_id} isOwner={user?.id === creator.user_id} />
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 }
