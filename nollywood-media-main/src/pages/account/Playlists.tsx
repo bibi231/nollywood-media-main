@@ -44,7 +44,7 @@ export function Playlists() {
         try {
             const { data, error } = await supabase
                 .from('playlists')
-                .select('*, playlist_films(count)')
+                .select('*, playlist_items(count)')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
@@ -53,7 +53,7 @@ export function Playlists() {
             setPlaylists(
                 (data || []).map((p: any) => ({
                     ...p,
-                    item_count: p.playlist_films?.[0]?.count || 0,
+                    item_count: p.playlist_items?.[0]?.count || p.playlist_items?.count || 0,
                 }))
             );
         } catch (err) {
@@ -97,7 +97,7 @@ export function Playlists() {
         setItemsLoading(true);
         try {
             const { data, error } = await supabase
-                .from('playlist_films')
+                .from('playlist_items')
                 .select('id, film_id, position, films(title, poster_url, duration)')
                 .eq('playlist_id', playlistId)
                 .order('position', { ascending: true });
@@ -127,7 +127,7 @@ export function Playlists() {
 
     const handleRemoveItem = async (itemId: string) => {
         try {
-            await supabase.from('playlist_films').delete().eq('id', itemId);
+            await supabase.from('playlist_items').delete().eq('id', itemId);
             setPlaylistItems(prev => prev.filter(i => i.id !== itemId));
         } catch (err) {
             console.error('Error removing item:', err);

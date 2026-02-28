@@ -33,21 +33,34 @@ export default function History() {
 
   const loadHistory = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: historyData, error } = await supabase
         .from('watch_progress')
-        .select(`
-          id,
-          film_id,
-          progress_seconds,
-          progress_percentage,
-          last_watched,
-          film:films(id, title, poster_url, runtime_min, studio_label)
-        `)
+        .select(`*`)
         .eq('user_id', user?.id)
         .order('last_watched', { ascending: false });
 
       if (error) throw error;
-      setHistory(data || []);
+
+      if (!historyData || historyData.length === 0) {
+        setHistory([]);
+        return;
+      }
+
+      // Proxy workarounds: fetch films manually
+      const filmIds = historyData.map((item: any) => item.film_id);
+      const { data: filmsData, error: filmsError } = await supabase
+        .from('films')
+        .select('id, title, poster_url, runtime_min, studio_label')
+        .in('id', filmIds);
+
+      if (filmsError) throw filmsError;
+
+      const fullHistory = historyData.map((item: any) => ({
+        ...item,
+        film: filmsData?.find((f: any) => f.id === item.film_id) || null
+      })).filter((item: any) => item.film !== null);
+
+      setHistory(fullHistory as WatchedFilm[]);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {

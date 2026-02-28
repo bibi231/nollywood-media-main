@@ -60,7 +60,10 @@ CREATE TABLE IF NOT EXISTS films (
   hls_url TEXT DEFAULT '',
   views INTEGER DEFAULT 0,
   status TEXT DEFAULT 'published' CHECK (status IN ('draft', 'published', 'unlisted', 'archived')),
-  uploaded_by UUID REFERENCES users(id),
+  is_short BOOLEAN DEFAULT false,
+  vertical_aspect BOOLEAN DEFAULT false,
+  scheduled_for TIMESTAMPTZ,
+  uploaded_by UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -121,6 +124,8 @@ CREATE TABLE IF NOT EXISTS user_content_uploads (
   status TEXT DEFAULT 'processing',
   moderation_status TEXT DEFAULT 'pending',
   visibility TEXT DEFAULT 'private',
+  is_short BOOLEAN DEFAULT false,
+  vertical_aspect BOOLEAN DEFAULT false,
   views INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -168,6 +173,37 @@ CREATE TABLE IF NOT EXISTS creator_profiles (
   is_verified BOOLEAN DEFAULT false,
   total_views INTEGER DEFAULT 0,
   subscriber_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ═══ Creator Posts (Community Tab) ═══
+CREATE TABLE IF NOT EXISTS creator_posts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  image_urls TEXT[],
+  likes_count INTEGER DEFAULT 0,
+  comments_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ═══ Creator Post Likes ═══
+CREATE TABLE IF NOT EXISTS creator_post_likes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID REFERENCES creator_posts(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(post_id, user_id)
+);
+
+-- ═══ Creator Post Comments ═══
+CREATE TABLE IF NOT EXISTS creator_post_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID REFERENCES creator_posts(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -220,10 +256,10 @@ CREATE TABLE IF NOT EXISTS content_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   content_type TEXT,
   content_id UUID,
-  reporter_id UUID REFERENCES users(id),
+  reporter_id UUID REFERENCES users(id) ON DELETE SET NULL,
   reason TEXT,
   status TEXT DEFAULT 'pending',
-  reviewed_by UUID,
+  reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
   reviewed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -294,7 +330,7 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
 CREATE TABLE IF NOT EXISTS subscriptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  plan_id UUID REFERENCES subscription_plans(id),
+  plan_id UUID REFERENCES subscription_plans(id) ON DELETE RESTRICT,
   status TEXT DEFAULT 'active',
   current_period_end TIMESTAMPTZ,
   cancel_at TIMESTAMPTZ,
@@ -325,6 +361,12 @@ CREATE INDEX IF NOT EXISTS idx_watch_history_user ON watch_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_playback_events_type_created ON playback_events(event_type, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_watch_progress_updated ON watch_progress(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_films_uploaded_by ON films(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_film_comments_user ON film_comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_film_likes_film ON film_likes(film_id);
+CREATE INDEX IF NOT EXISTS idx_watchlists_user ON watchlists(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_follows_follower ON user_follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_user_follows_following ON user_follows(following_id);
 
 -- ═══ Seed admin user ═══
 INSERT INTO users (id, email, encrypted_password, display_name)

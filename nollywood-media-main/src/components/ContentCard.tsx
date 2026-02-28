@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Eye, Play, Star } from 'lucide-react';
 import { Movie, TVShow } from '../types';
 import { WatchlistButton } from './WatchlistButton';
@@ -70,7 +71,15 @@ export function ContentCard({ content, onPlayClick }: ContentCardProps) {
         <h3 className="font-semibold text-gray-100 dark:text-gray-100 line-clamp-2 mb-1 text-sm group-hover:text-red-400 transition-colors duration-200">
           {content.title}
         </h3>
-        <p className="text-xs text-gray-500 mb-1.5 truncate">{(content as any).studio_label}</p>
+        <p className="text-xs text-gray-500 mb-1.5 truncate">
+          <Link
+            to={`/creator/${(content as any).user_id || (content as any).studio_label}`}
+            onClick={(e) => e.stopPropagation()}
+            className="hover:text-red-400 hover:underline transition-colors"
+          >
+            {(content as any).studio_label}
+          </Link>
+        </p>
         <div className="flex items-center gap-2 text-[11px] text-gray-500">
           <div className="flex items-center gap-1">
             <Eye className="w-3 h-3" />

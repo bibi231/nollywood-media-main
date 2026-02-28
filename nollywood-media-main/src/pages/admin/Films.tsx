@@ -53,8 +53,8 @@ export function AdminFilms() {
   };
 
   const filteredFilms = films.filter((film) =>
-    film.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    film.genre.toLowerCase().includes(searchQuery.toLowerCase())
+    (film.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (film.genre || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (loading) {

@@ -17,6 +17,7 @@ interface AuthModalProps {
 export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) {
   const [mode, setMode] = useState<'login' | 'signup' | 'reset'>(initialMode);
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -127,6 +128,11 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
       return;
     }
 
+    if (!name.trim()) {
+      setError('Name is required');
+      return;
+    }
+
     if (!validatePassword(password)) {
       setError('Password must be at least 6 characters');
       return;
@@ -150,7 +156,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
-            display_name: email.split('@')[0],
+            display_name: name.trim() || email.split('@')[0],
           },
         },
       });
@@ -183,6 +189,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
       }
 
       setEmail('');
+      setName('');
       setPassword('');
       setConfirmPassword('');
     } catch (err: any) {
@@ -373,6 +380,23 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
                 </div>
               </div>
             </>
+          )}
+
+          {mode === 'signup' && (
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-2">
+                Name
+              </label>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-white placeholder-slate-400 focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-600/20"
+                placeholder="Your Name"
+              />
+            </div>
           )}
 
           <div>

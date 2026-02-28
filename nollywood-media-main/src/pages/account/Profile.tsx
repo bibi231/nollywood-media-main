@@ -7,10 +7,6 @@ interface UserProfile {
   display_name: string;
   avatar_url: string;
   bio: string;
-  city: string;
-  country: string;
-  date_of_birth: string;
-  phone_number: string;
   favorite_genres: string[];
   social_links: {
     twitter?: string;
@@ -40,10 +36,6 @@ export function Profile() {
     display_name: '',
     avatar_url: '',
     bio: '',
-    city: '',
-    country: '',
-    date_of_birth: '',
-    phone_number: '',
     favorite_genres: [],
     social_links: {},
   });
@@ -72,10 +64,6 @@ export function Profile() {
           display_name: data.display_name || '',
           avatar_url: data.avatar_url || '',
           bio: data.bio || '',
-          city: data.city || '',
-          country: data.country || '',
-          date_of_birth: data.date_of_birth || '',
-          phone_number: data.phone_number || '',
           favorite_genres: data.favorite_genres || [],
           social_links: data.social_links || {},
         });
@@ -250,65 +238,6 @@ export function Profile() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-gray-900"
                 placeholder="Tell us about yourself..."
               />
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <MapPin className="w-4 h-4 inline mr-1" />
-                  City
-                </label>
-                <input
-                  type="text"
-                  value={profile.city}
-                  onChange={(e) => setProfile({ ...profile, city: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900"
-                  placeholder="Lagos"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Globe className="w-4 h-4 inline mr-1" />
-                  Country
-                </label>
-                <input
-                  type="text"
-                  value={profile.country}
-                  onChange={(e) => setProfile({ ...profile, country: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900"
-                  placeholder="Nigeria"
-                />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Calendar className="w-4 h-4 inline mr-1" />
-                  Date of Birth
-                </label>
-                <input
-                  type="date"
-                  value={profile.date_of_birth}
-                  onChange={(e) => setProfile({ ...profile, date_of_birth: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Phone className="w-4 h-4 inline mr-1" />
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={profile.phone_number}
-                  onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900"
-                  placeholder="+234 XXX XXX XXXX"
-                />
-              </div>
             </div>
 
             <div>

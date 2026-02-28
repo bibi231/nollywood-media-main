@@ -56,8 +56,8 @@ const WatchHistory = lazy(() => import("./pages/account/WatchHistory").then(m =>
 const Watchlist = lazy(() => import("./pages/account/Watchlist").then(m => ({ default: m.Watchlist })));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword").then(m => ({ default: m.ForgotPassword })));
 const ResetPassword = lazy(() => import("./pages/ResetPassword").then(m => ({ default: m.ResetPassword })));
-const Terms = lazy(() => import("./pages/Terms").then(m => ({ default: m.Terms })));
-const Privacy = lazy(() => import("./pages/Privacy").then(m => ({ default: m.Privacy })));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 const Upload = lazy(() => import("./pages/account/Upload").then(m => ({ default: m.Upload })));
 const MyUploads = lazy(() => import("./pages/account/MyUploads").then(m => ({ default: m.MyUploads })));
 const Notifications = lazy(() => import("./pages/account/Notifications").then(m => ({ default: m.Notifications })));
@@ -101,6 +101,7 @@ const AccountSettings = lazy(() => import("./pages/account/Settings").then(m => 
 const CreatorProfile = lazy(() => import("./pages/CreatorProfile"));
 const Community = lazy(() => import("./pages/Community"));
 const AccountPlaylists = lazy(() => import("./pages/account/Playlists").then(m => ({ default: m.Playlists })));
+const Clips = lazy(() => import("./pages/Clips"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen bg-slate-950">
@@ -153,6 +154,7 @@ export default function App() {
                   <Route path="/creator/:id" element={<CreatorProfile />} />
                   <Route path="/community" element={<Community />} />
                   <Route path="/creator-discover" element={<CreatorDiscover />} />
+                  <Route path="/clips" element={<Clips />} />
                   <Route path="/studio" element={
                     <ProtectedRoute>
                       <StudioLayout />

@@ -36,20 +36,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const user = result[0];
 
-        // Create profile
-        await query(
-            `INSERT INTO user_profiles (id, email, display_name)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (id) DO NOTHING`,
-            [user.id, user.email, name]
-        );
+        // Ensure user_profiles row
+        const hasProfile = await query(`SELECT id FROM user_profiles WHERE id = $1`, [user.id]);
+        if (hasProfile.length === 0) {
+            await query(
+                `INSERT INTO user_profiles (id, email, display_name) VALUES ($1, $2, $3)`,
+                [user.id, user.email, name]
+            );
+        }
+
+        // Auto-create creator profile
+        const hasCreatorProfile = await query(`SELECT user_id FROM creator_profiles WHERE user_id = $1`, [user.id]);
+        if (hasCreatorProfile.length === 0) {
+            await query(
+                `INSERT INTO creator_profiles (id, user_id, channel_name) VALUES ($1, $1, $2)`,
+                [user.id, display_name || email.split('@')[0]]
+            );
+        }
 
         // Create role
-        await query(
-            `INSERT INTO user_roles (user_id, role) VALUES ($1, 'user')
-       ON CONFLICT (user_id) DO NOTHING`,
-            [user.id]
-        );
+        const hasRole = await query(`SELECT user_id FROM user_roles WHERE user_id = $1`, [user.id]);
+        if (hasRole.length === 0) {
+            await query(
+                `INSERT INTO user_roles (user_id, role) VALUES ($1, 'user')`,
+                [user.id]
+            );
+        }
 
         // Generate JWT
         const roleResult = await query('SELECT role FROM user_roles WHERE user_id = $1', [user.id]);

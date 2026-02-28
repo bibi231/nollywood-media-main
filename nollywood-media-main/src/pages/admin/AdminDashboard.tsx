@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 export default function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -199,7 +199,7 @@ export default function AdminDashboard() {
         {/* Navigation Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div
-            onClick={() => navigate('/admin/analytics')}
+            onClick={() => navigate('/admin/cms/analytics')}
             className="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-lg transition-shadow"
           >
             <BarChart3 className="w-8 h-8 text-blue-600 mb-4" />
@@ -208,7 +208,7 @@ export default function AdminDashboard() {
           </div>
 
           <div
-            onClick={() => navigate('/admin/moderation')}
+            onClick={() => navigate('/admin/cms/moderation')}
             className="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-lg transition-shadow"
           >
             <AlertTriangle className="w-8 h-8 text-red-600 mb-4" />
@@ -217,7 +217,7 @@ export default function AdminDashboard() {
           </div>
 
           <div
-            onClick={() => navigate('/admin/users')}
+            onClick={() => navigate('/admin/cms/users')}
             className="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-lg transition-shadow"
           >
             <Users className="w-8 h-8 text-green-600 mb-4" />
@@ -226,7 +226,7 @@ export default function AdminDashboard() {
           </div>
 
           <div
-            onClick={() => navigate('/admin/films')}
+            onClick={() => navigate('/admin/cms/films')}
             className="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-lg transition-shadow"
           >
             <Video className="w-8 h-8 text-purple-600 mb-4" />
@@ -235,7 +235,7 @@ export default function AdminDashboard() {
           </div>
 
           <div
-            onClick={() => navigate('/admin/settings')}
+            onClick={() => navigate('/admin/cms/settings')}
             className="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-lg transition-shadow"
           >
             <Settings className="w-8 h-8 text-gray-600 mb-4" />
@@ -244,7 +244,7 @@ export default function AdminDashboard() {
           </div>
 
           <div
-            onClick={() => navigate('/admin/compliance')}
+            onClick={() => navigate('/admin/cms/compliance')}
             className="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-lg transition-shadow"
           >
             <MessageSquare className="w-8 h-8 text-orange-600 mb-4" />
@@ -277,7 +277,7 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-4 py-3">
                         <button
-                          onClick={() => navigate(`/admin/moderation/${item.id}`)}
+                          onClick={() => navigate(`/admin/cms/moderation/${item.id}`)}
                           className="text-blue-600 hover:text-blue-700 font-medium text-sm"
                         >
                           Review

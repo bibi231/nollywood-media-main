@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   Settings, SkipForward, Rewind, PictureInPicture,
-  HighDefinition
+  Settings2
 } from 'lucide-react';
 import Hls from 'hls.js';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { AddToPlaylistPopover } from './AddToPlaylistPopover';
 
 interface EnhancedVideoPlayerProps {
   src: string;
@@ -410,6 +411,8 @@ export function EnhancedVideoPlayer({
             </div>
 
             <div className="flex items-center gap-2 relative">
+              <AddToPlaylistPopover filmId={filmId} />
+
               <button
                 onClick={() => setShowSettings(!showSettings)}
                 className="p-2 hover:bg-white/20 rounded-full transition-colors"
@@ -422,7 +425,7 @@ export function EnhancedVideoPlayer({
                   {availableQualities.length > 0 && (
                     <div>
                       <div className="text-[10px] uppercase tracking-wider font-bold text-gray-500 px-2 mb-1 flex items-center gap-1">
-                        <HighDefinition className="w-3 h-3" /> Quality
+                        <Settings2 className="w-3 h-3" /> Quality
                       </div>
                       <button
                         onClick={() => switchQuality(-1)}

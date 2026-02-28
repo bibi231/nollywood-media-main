@@ -3,8 +3,11 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { ContentCard } from "../components/ContentCard";
 import { BackButton } from "../components/BackButton";
 import { AdSpace } from "../components/AdSpace";
-import { useCatalog } from "../context/CatalogProvider";
+import { supabase } from '../lib/supabase';
 import { Film } from "../lib/catalog";
+import { SEO } from '../components/SEO';
+
+import { useCatalog } from "../context/CatalogProvider";
 
 export default function SearchPage() {
   const [searchParams] = useSearchParams();
@@ -12,7 +15,6 @@ export default function SearchPage() {
   const [films, setFilms] = useState<Film[]>([]);
   const navigate = useNavigate();
   const { filmCatalog } = useCatalog();
-
   useEffect(() => {
     if (filmCatalog && query) {
       const searchLower = query.toLowerCase();
@@ -29,13 +31,14 @@ export default function SearchPage() {
       setFilms(filtered);
     }
   }, [filmCatalog, query]);
-
   const handlePlayClick = (film: Film) => {
     navigate(`/watch/${film.id}`);
   };
 
   return (
     <div className="bg-white dark:bg-gray-900 min-h-screen pt-14 lg:pl-60">
+      <SEO title={`Search Results for "${query}"`} description="Search for films and series on NaijaMation." />
+
       <div className="px-6 py-6">
         <div className="mb-3">
           <BackButton fallback="/catalog" label="Back to Catalog" />

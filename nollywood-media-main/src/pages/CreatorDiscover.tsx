@@ -32,21 +32,26 @@ export default function CreatorDiscover() {
 
       if (error) throw error;
 
-      const creatorsWithFollow = await Promise.all(
-        (data || []).map(async (creator) => {
-          let isFollowed = false;
-          if (user) {
-            const { data: followData } = await supabase
-              .from('user_follows')
-              .select('id')
-              .eq('follower_id', user.id)
-              .eq('following_id', creator.user_id)
-              .maybeSingle();
-            isFollowed = !!followData;
+      let followedCreatorIds = new Set<string>();
+      if (user && data && data.length > 0) {
+        const creatorIds = data.map(c => c.user_id).filter(Boolean);
+        if (creatorIds.length > 0) {
+          const { data: followData } = await supabase
+            .from('user_follows')
+            .select('following_id')
+            .eq('follower_id', user.id)
+            .in('following_id', creatorIds);
+
+          if (followData) {
+            followedCreatorIds = new Set(followData.map(f => f.following_id));
           }
-          return { ...creator, is_followed: isFollowed };
-        })
-      );
+        }
+      }
+
+      const creatorsWithFollow = (data || []).map((creator) => ({
+        ...creator,
+        is_followed: followedCreatorIds.has(creator.user_id),
+      }));
 
       setCreators(creatorsWithFollow);
     } catch (error) {
@@ -135,11 +140,10 @@ export default function CreatorDiscover() {
 
               <button
                 onClick={() => handleToggleFollow(creator.user_id, creator.is_followed)}
-                className={`w-full px-4 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-                  creator.is_followed
+                className={`w-full px-4 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${creator.is_followed
                     ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     : 'bg-red-600 text-white hover:bg-red-700'
-                }`}
+                  }`}
               >
                 {creator.is_followed ? (
                   <>

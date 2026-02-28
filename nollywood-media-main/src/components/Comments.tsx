@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
-import { ThumbsUp, Trash2, Edit2, MessageCircle } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Trash2, Edit2, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 interface Comment {
   id: string;
+  user_id: string;
   content: string;
   rating: number | null;
   likes_count: number;
   created_at: string;
   user_has_liked: boolean;
+  dislikes_count: number;
+  user_has_disliked: boolean;
   user_profile: {
     display_name: string;
     avatar_url: string;
@@ -21,7 +24,7 @@ interface CommentsProps {
   filmTitle: string;
 }
 
-export function Comments({ filmId, filmTitle }: CommentsProps) {
+export function Comments({ filmId }: CommentsProps) {
   const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -45,36 +48,55 @@ export function Comments({ filmId, filmTitle }: CommentsProps) {
           user_profile:user_profiles!film_comments_user_id_fkey(display_name, avatar_url)
         `)
         .eq('film_id', filmId)
-        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const commentsWithLikes = await Promise.all(
-        (commentsData || []).map(async (comment) => {
-          const { count } = await supabase
-            .from('comment_likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('comment_id', comment.id);
+      let likeCountsMap = new Map<string, number>();
+      let userLikedComments = new Set<string>();
+      let dislikeCountsMap = new Map<string, number>();
+      let userDislikedComments = new Set<string>();
 
-          let userHasLiked = false;
-          if (user) {
-            const { data: likeData } = await supabase
-              .from('comment_likes')
-              .select('id')
-              .eq('comment_id', comment.id)
-              .eq('user_id', user.id)
-              .maybeSingle();
-            userHasLiked = !!likeData;
+      if (commentsData && commentsData.length > 0) {
+        const commentIds = commentsData.map((c: any) => c.id).filter(Boolean);
+        if (commentIds.length > 0) {
+          const { data: allLikes } = await supabase
+            .from('comment_likes')
+            .select('comment_id, user_id')
+            .in('comment_id', commentIds);
+
+          if (allLikes) {
+            allLikes.forEach((like: any) => {
+              likeCountsMap.set(like.comment_id, (likeCountsMap.get(like.comment_id) || 0) + 1);
+              if (user && like.user_id === user.id) {
+                userLikedComments.add(like.comment_id);
+              }
+            });
           }
 
-          return {
-            ...comment,
-            likes_count: count || 0,
-            user_has_liked: userHasLiked,
-          };
-        })
-      );
+          const { data: allDislikes } = await supabase
+            .from('comment_dislikes')
+            .select('comment_id, user_id')
+            .in('comment_id', commentIds);
+
+          if (allDislikes) {
+            allDislikes.forEach((dislike: any) => {
+              dislikeCountsMap.set(dislike.comment_id, (dislikeCountsMap.get(dislike.comment_id) || 0) + 1);
+              if (user && dislike.user_id === user.id) {
+                userDislikedComments.add(dislike.comment_id);
+              }
+            });
+          }
+        }
+      }
+
+      const commentsWithLikes = (commentsData || []).map((comment: any) => ({
+        ...comment,
+        likes_count: likeCountsMap.get(comment.id) || 0,
+        user_has_liked: userLikedComments.has(comment.id),
+        dislikes_count: dislikeCountsMap.get(comment.id) || 0,
+        user_has_disliked: userDislikedComments.has(comment.id),
+      }));
 
       setComments(commentsWithLikes);
     } catch (error) {
@@ -101,6 +123,7 @@ export function Comments({ filmId, filmTitle }: CommentsProps) {
       });
 
       if (error) throw error;
+
       setCommentText('');
       await loadComments();
     } catch (error) {
@@ -115,7 +138,7 @@ export function Comments({ filmId, filmTitle }: CommentsProps) {
     try {
       const { error } = await supabase
         .from('film_comments')
-        .update({ deleted_at: new Date() })
+        .delete()
         .eq('id', commentId);
 
       if (error) throw error;
@@ -143,7 +166,7 @@ export function Comments({ filmId, filmTitle }: CommentsProps) {
     }
   };
 
-  const handleLikeComment = async (commentId: string, userHasLiked: boolean) => {
+  const handleLikeComment = async (commentId: string, userHasLiked: boolean, userHasDisliked: boolean) => {
     if (!user) {
       alert('Please sign in to like comments');
       return;
@@ -151,20 +174,37 @@ export function Comments({ filmId, filmTitle }: CommentsProps) {
 
     try {
       if (userHasLiked) {
-        await supabase
-          .from('comment_likes')
-          .delete()
-          .eq('comment_id', commentId)
-          .eq('user_id', user.id);
+        await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', user.id);
       } else {
-        await supabase.from('comment_likes').insert({
-          comment_id: commentId,
-          user_id: user.id,
-        });
+        if (userHasDisliked) {
+          await supabase.from('comment_dislikes').delete().eq('comment_id', commentId).eq('user_id', user.id);
+        }
+        await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: user.id });
       }
       await loadComments();
     } catch (error) {
       console.error('Error liking comment:', error);
+    }
+  };
+
+  const handleDislikeComment = async (commentId: string, userHasLiked: boolean, userHasDisliked: boolean) => {
+    if (!user) {
+      alert('Please sign in to dislike comments');
+      return;
+    }
+
+    try {
+      if (userHasDisliked) {
+        await supabase.from('comment_dislikes').delete().eq('comment_id', commentId).eq('user_id', user.id);
+      } else {
+        if (userHasLiked) {
+          await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', user.id);
+        }
+        await supabase.from('comment_dislikes').insert({ comment_id: commentId, user_id: user.id });
+      }
+      await loadComments();
+    } catch (error) {
+      console.error('Error disliking comment:', error);
     }
   };
 
@@ -225,21 +265,19 @@ export function Comments({ filmId, filmTitle }: CommentsProps) {
         <div className="mb-4 flex gap-2">
           <button
             onClick={() => setCommentSort('newest')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              commentSort === 'newest'
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-100 hover:bg-gray-200'
-            }`}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${commentSort === 'newest'
+              ? 'bg-gray-900 text-white'
+              : 'bg-gray-100 hover:bg-gray-200'
+              }`}
           >
             Newest
           </button>
           <button
             onClick={() => setCommentSort('popular')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              commentSort === 'popular'
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-100 hover:bg-gray-200'
-            }`}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${commentSort === 'popular'
+              ? 'bg-gray-900 text-white'
+              : 'bg-gray-100 hover:bg-gray-200'
+              }`}
           >
             Most Liked
           </button>
@@ -263,7 +301,7 @@ export function Comments({ filmId, filmTitle }: CommentsProps) {
                       {new Date(comment.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  {user?.id === comment.user_profile?.display_name && (
+                  {user?.id === comment.user_id && (
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
@@ -314,17 +352,29 @@ export function Comments({ filmId, filmTitle }: CommentsProps) {
                   <p className="text-gray-900 mb-2">{comment.content}</p>
                 )}
 
-                <button
-                  onClick={() => handleLikeComment(comment.id, comment.user_has_liked)}
-                  className={`flex items-center gap-1.5 text-sm transition-colors ${
-                    comment.user_has_liked
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => handleLikeComment(comment.id, comment.user_has_liked, comment.user_has_disliked)}
+                    className={`flex items-center gap-1.5 text-sm transition-colors ${comment.user_has_liked
                       ? 'text-red-600'
                       : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <ThumbsUp className={`w-4 h-4 ${comment.user_has_liked ? 'fill-current' : ''}`} />
-                  <span>{comment.likes_count || 0}</span>
-                </button>
+                      }`}
+                  >
+                    <ThumbsUp className={`w-4 h-4 ${comment.user_has_liked ? 'fill-current' : ''}`} />
+                    <span>{comment.likes_count || 0}</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleDislikeComment(comment.id, comment.user_has_liked, comment.user_has_disliked)}
+                    className={`flex items-center gap-1.5 text-sm transition-colors ${comment.user_has_disliked
+                      ? 'text-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                  >
+                    <ThumbsDown className={`w-4 h-4 ${comment.user_has_disliked ? 'fill-current' : ''}`} />
+                    <span>{comment.dislikes_count || 0}</span>
+                  </button>
+                </div>
               </div>
             </div>
           ))

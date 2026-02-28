@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase';
 import { useCatalog } from '../context/CatalogProvider';
 import { BackButton } from '../components/BackButton';
 import { UserPlus, UserCheck, Users, Film as FilmIcon, Calendar, CheckCircle } from 'lucide-react';
+import { CommunityPosts } from '../components/CommunityPosts';
+import { SEO } from '../components/SEO';
 
 interface CreatorProfile {
     id: string;
@@ -26,29 +28,44 @@ export default function CreatorProfile() {
     const [creator, setCreator] = useState<CreatorProfile | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'videos' | 'community'>('videos');
 
     useEffect(() => {
         if (id) loadCreator();
     }, [id, user]);
 
     const loadCreator = async () => {
+        if (!id) return;
         try {
-            const { data, error } = await supabase
-                .from('creator_profiles')
-                .select('*')
-                .eq('user_id', id)
-                .maybeSingle();
+            let data = null;
+            // Only query DB if ID looks like a UUID
+            if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+                const { data: dbData, error } = await supabase
+                    .from('creator_profiles')
+                    .select('*')
+                    .eq('user_id', id)
+                    .maybeSingle();
+                if (!error && dbData) data = dbData;
+            }
 
-            if (error) throw error;
             if (!data) {
-                setLoading(false);
-                return;
+                // Determine mock profile from text slug if DB fails or it's a mocked string
+                const decodedName = decodeURIComponent(id);
+                data = {
+                    user_id: id,
+                    channel_name: decodedName,
+                    channel_description: `Official channel for ${decodedName}.`,
+                    channel_avatar: '',
+                    subscriber_count: Math.floor(Math.random() * 50000) + 1000,
+                    verification_status: 'verified',
+                    created_at: new Date().toISOString()
+                };
             }
 
             setCreator(data);
 
-            // Check follow status
-            if (user) {
+            // Check follow status (only if valid UUID)
+            if (user && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.user_id)) {
                 const { data: followData } = await supabase
                     .from('user_follows')
                     .select('id')
@@ -117,14 +134,6 @@ export default function CreatorProfile() {
     }
 
     return (
-        <div className="bg-white dark:bg-gray-900 min-h-screen pt-14 lg:pl-60">
-            <div className="px-4 sm:px-6 lg:px-8 py-6">
-                <div className="mb-4">
-                    <BackButton fallback="/creators" label="Back" />
-                </div>
-
-                {/* Banner + Avatar */}
-                <div className="relative rounded-xl overflow-hidden mb-6">
                     <div className="h-48 bg-gradient-to-br from-red-600 via-red-800 to-gray-900">
                         {creator.channel_avatar && (
                             <img src={creator.channel_avatar} alt="" className="w-full h-full object-cover opacity-30" />
@@ -165,59 +174,83 @@ export default function CreatorProfile() {
                             </div>
                             <button
                                 onClick={handleFollowToggle}
-                                className={`flex-shrink-0 flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${isFollowing
-                                    ? 'bg-white/20 backdrop-blur text-white hover:bg-white/30'
-                                    : 'bg-red-600 hover:bg-red-700 text-white'
-                                    }`}
+                                className={`flex-shrink-0 flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${
+    isFollowing
+        ? 'bg-white/20 backdrop-blur text-white hover:bg-white/30'
+        : 'bg-red-600 hover:bg-red-700 text-white'
+}`}
                             >
                                 {isFollowing ? <UserCheck className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
                                 {isFollowing ? 'Following' : 'Follow'}
                             </button>
                         </div>
                     </div>
-                </div>
+                </div >
 
-                {/* About */}
-                {creator.channel_description && (
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-8">
-                        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">About</h2>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{creator.channel_description}</p>
+        {/* About */ }
+    {
+        creator.channel_description && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-8">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">About</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{creator.channel_description}</p>
+            </div>
+        )
+    }
+
+    {/* Tabs */ }
+    <div className="flex items-center gap-6 border-b border-gray-200 dark:border-gray-800 mb-6">
+        <button
+            onClick={() => setActiveTab('videos')}
+            className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'videos' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+        >
+            Videos ({creatorFilms.length})
+        </button>
+        <button
+            onClick={() => setActiveTab('community')}
+            className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'community' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+        >
+            Community
+        </button>
+    </div>
+
+    {/* Content */ }
+    {
+        activeTab === 'videos' ? (
+            <div className="mb-8">
+                {creatorFilms.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {creatorFilms.map((film) => (
+                            <div key={film.id} className="cursor-pointer" onClick={() => navigate(`/watch/${film.id}`)}>
+                                <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden mb-2">
+                                    <img
+                                        src={film.poster_url || '/placeholder.jpg'}
+                                        alt={film.title}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                                <h3 className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2">{film.title}</h3>
+                                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    <span>{film.views?.toLocaleString() || 0} views</span>
+                                    <span>•</span>
+                                    <span>{film.release_year}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <FilmIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                        <p className="text-gray-600 dark:text-gray-400">No videos uploaded yet</p>
                     </div>
                 )}
-
-                {/* Videos */}
-                <div className="mb-8">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                        Videos ({creatorFilms.length})
-                    </h2>
-                    {creatorFilms.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            {creatorFilms.map((film) => (
-                                <div key={film.id} className="cursor-pointer" onClick={() => navigate(`/watch/${film.id}`)}>
-                                    <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden mb-2">
-                                        <img
-                                            src={film.poster_url || '/placeholder.jpg'}
-                                            alt={film.title}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                    <h3 className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2">{film.title}</h3>
-                                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                        <span>{film.views?.toLocaleString() || 0} views</span>
-                                        <span>•</span>
-                                        <span>{film.release_year}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <FilmIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                            <p className="text-gray-600 dark:text-gray-400">No videos uploaded yet</p>
-                        </div>
-                    )}
-                </div>
             </div>
+        ) : (
+        <div className="mb-8">
+            <CommunityPosts creatorId={creator.user_id} isOwner={user?.id === creator.user_id} />
         </div>
+    )
+    }
+            </div >
+        </div >
     );
 }

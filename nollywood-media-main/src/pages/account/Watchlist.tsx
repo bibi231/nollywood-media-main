@@ -36,17 +36,34 @@ export function Watchlist() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      const { data: watchlistData, error } = await supabase
         .from('watchlists')
-        .select(`
-          *,
-          film:films(*)
-        `)
+        .select(`*`)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setWatchlist(data || []);
+
+      if (!watchlistData || watchlistData.length === 0) {
+        setWatchlist([]);
+        return;
+      }
+
+      // The proxy drops nested queries, so we manually fetch the related films
+      const filmIds = watchlistData.map((item: any) => item.film_id);
+      const { data: filmsData, error: filmsError } = await supabase
+        .from('films')
+        .select('*')
+        .in('id', filmIds);
+
+      if (filmsError) throw filmsError;
+
+      const fullWatchlist = watchlistData.map((item: any) => ({
+        ...item,
+        film: filmsData?.find((f: any) => f.id === item.film_id) || null
+      })).filter((item: any) => item.film !== null); // Filter out items where the film was deleted
+
+      setWatchlist(fullWatchlist as WatchlistItem[]);
     } catch (error) {
       console.error('Error loading watchlist:', error);
     } finally {

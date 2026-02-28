@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Share2, Flag, Eye, Play, Maximize, Check, X } from "lucide-react";
+import { Share2, Flag, Eye, Play, Maximize, Check, X, Heart, ThumbsDown } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { EnhancedVideoPlayer } from "../components/EnhancedVideoPlayer";
@@ -29,6 +29,8 @@ interface Film {
   hls_url?: string;
   studio_label: string;
   views: number;
+  status?: string;
+  scheduled_for?: string;
 }
 
 interface Comment {
@@ -50,7 +52,6 @@ export default function WatchPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [film, setFilm] = useState<Film | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
   const [relatedFilms, setRelatedFilms] = useState<Film[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFullDescription, setShowFullDescription] = useState(false);
@@ -58,6 +59,10 @@ export default function WatchPage() {
   const [averageRating, setAverageRating] = useState<number | null>(null);
   const [totalRatings, setTotalRatings] = useState(0);
   const [shareToast, setShareToast] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const [isDisliked, setIsDisliked] = useState(false);
+  const [dislikesCount, setDislikesCount] = useState(0);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
 
@@ -95,6 +100,7 @@ export default function WatchPage() {
       loadRelatedFilms();
       loadRatings();
       loadLikeStatus();
+      loadDislikeStatus();
     }
   }, [id, user]);
 
@@ -116,22 +122,126 @@ export default function WatchPage() {
   };
 
   const loadLikeStatus = async () => {
-    if (!user) return;
-
     try {
+      // Get total count
+      const { count } = await supabase
+        .from('film_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('film_id', id);
+
+      setLikesCount(count || 0);
+
+      if (!user) return;
+
       const { data } = await supabase
         .from('film_likes')
-        .select('like_type')
+        .select('id')
         .eq('film_id', id)
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (data) {
-        // We'll trust the child components for detailed state, 
-        // but can keep simple tracking if needed.
-      }
+      setIsLiked(!!data);
     } catch (error) {
       console.error('Error loading like status:', error);
+    }
+  };
+
+  const loadDislikeStatus = async () => {
+    try {
+      const { count } = await supabase
+        .from('film_dislikes')
+        .select('*', { count: 'exact', head: true })
+        .eq('film_id', id);
+
+      setDislikesCount(count || 0);
+
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('film_dislikes')
+        .select('id')
+        .eq('film_id', id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      setIsDisliked(!!data);
+    } catch (error) {
+      console.error('Error loading dislike status:', error);
+    }
+  };
+
+  const handleToggleLike = async () => {
+    if (!user) {
+      alert('Please log in to like videos');
+      return;
+    }
+
+    try {
+      if (isLiked) {
+        // Optimistic UI
+        setIsLiked(false);
+        setLikesCount(prev => Math.max(0, prev - 1));
+
+        await supabase
+          .from('film_likes')
+          .delete()
+          .eq('film_id', id)
+          .eq('user_id', user.id);
+      } else {
+        // Optimistic UI
+        setIsLiked(true);
+        setLikesCount(prev => prev + 1);
+
+        if (isDisliked) {
+          setIsDisliked(false);
+          setDislikesCount(prev => Math.max(0, prev - 1));
+          await supabase.from('film_dislikes').delete().eq('film_id', id).eq('user_id', user.id);
+        }
+
+        await supabase
+          .from('film_likes')
+          .insert({ film_id: id, user_id: user.id });
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      // Revert on error
+      loadLikeStatus();
+    }
+  };
+
+  const handleToggleDislike = async () => {
+    if (!user) {
+      alert('Please log in to dislike videos');
+      return;
+    }
+
+    try {
+      if (isDisliked) {
+        setIsDisliked(false);
+        setDislikesCount(prev => Math.max(0, prev - 1));
+
+        await supabase
+          .from('film_dislikes')
+          .delete()
+          .eq('film_id', id)
+          .eq('user_id', user.id);
+      } else {
+        setIsDisliked(true);
+        setDislikesCount(prev => prev + 1);
+
+        if (isLiked) {
+          setIsLiked(false);
+          setLikesCount(prev => Math.max(0, prev - 1));
+          await supabase.from('film_likes').delete().eq('film_id', id).eq('user_id', user.id);
+        }
+
+        await supabase
+          .from('film_dislikes')
+          .insert({ film_id: id, user_id: user.id });
+      }
+    } catch (error) {
+      console.error('Error toggling dislike:', error);
+      loadDislikeStatus();
     }
   };
 
@@ -214,7 +324,27 @@ export default function WatchPage() {
             <BackButton fallback="/" label="Back" />
           </div>
           <div className={`bg-black rounded-xl overflow-hidden mb-4 relative ${theaterMode ? 'h-screen' : 'aspect-video'}`}>
-            {film.video_url || film.hls_url ? (
+            {film.status === 'scheduled' && film.scheduled_for && new Date(film.scheduled_for) > new Date() ? (
+              <div className="w-full h-full relative">
+                <img src={film.poster_url} alt={film.title} className="w-full h-full object-cover opacity-30" />
+                <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white">
+                  <div className="bg-red-900/40 p-6 rounded-full border border-red-500/30 mb-6 backdrop-blur-md animate-pulse">
+                    <Play className="w-16 h-16 text-red-500 fill-red-500 opacity-50" />
+                  </div>
+                  <h3 className="text-3xl font-bold mb-4 tracking-tight">Premieres Shortly</h3>
+                  <div className="text-2xl font-mono bg-black/50 px-6 py-3 rounded-lg border border-white/10 shadow-xl shadow-red-900/20">
+                    {new Date(film.scheduled_for).toLocaleString(undefined, {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                  <p className="text-gray-400 mt-6 text-sm font-medium">Hang out in the comments below until the premiere starts.</p>
+                </div>
+              </div>
+            ) : film.video_url || film.hls_url ? (
               <EnhancedVideoPlayer
                 src={film.video_url}
                 hlsSrc={film.hls_url}
@@ -273,6 +403,22 @@ export default function WatchPage() {
 
             <div className="flex items-center gap-2">
               <button
+                onClick={handleToggleLike}
+                className={`flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-sm font-medium transition-all ${isLiked ? 'bg-red-50 text-red-600 dark:bg-red-900/20' : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white'}`}
+                title={isLiked ? "Unlike" : "Like"}
+              >
+                <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-600' : ''}`} />
+                <span className="hidden sm:inline">{likesCount > 0 ? likesCount : 'Like'}</span>
+              </button>
+              <button
+                onClick={handleToggleDislike}
+                className={`flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-sm font-medium transition-all ${isDisliked ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20' : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white'}`}
+                title={isDisliked ? "Remove Dislike" : "Dislike"}
+              >
+                <ThumbsDown className={`w-5 h-5 ${isDisliked ? 'fill-blue-600 text-blue-600' : ''}`} />
+                <span className="hidden sm:inline">{dislikesCount > 0 ? dislikesCount : 'Dislike'}</span>
+              </button>
+              <button
                 onClick={handleShareClick}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 rounded-full text-sm font-medium transition-all text-gray-900 dark:text-white"
               >
@@ -292,7 +438,12 @@ export default function WatchPage() {
 
           <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4 mb-6">
             <div className="flex flex-wrap gap-3 mb-2 text-sm">
-              <span className="font-semibold text-gray-900 dark:text-white">{film.studio_label}</span>
+              <Link
+                to={`/creator/${(film as any).user_id || film.studio_label}`}
+                className="font-semibold text-gray-900 dark:text-white hover:text-red-500 hover:underline transition-colors"
+              >
+                {film.studio_label}
+              </Link>
               {film.genre && (
                 <Link to={`/genre/${encodeURIComponent(film.genre)}`} className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors">
                   {film.genre}
@@ -370,10 +521,18 @@ export default function WatchPage() {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">
+                <h4 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1 group-hover:text-red-500 transition-colors">
                   {relatedFilm.title}
                 </h4>
-                <p className="text-xs text-gray-600">{relatedFilm.studio_label}</p>
+                <p className="text-xs text-gray-600">
+                  <Link
+                    to={`/creator/${(relatedFilm as any).user_id || relatedFilm.studio_label}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="hover:text-red-500 hover:underline transition-colors"
+                  >
+                    {relatedFilm.studio_label}
+                  </Link>
+                </p>
                 <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
                   <Eye className="w-3 h-3" />
                   <span>{relatedFilm.views?.toLocaleString() || '0'} views</span>

@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { Film } from "../lib/catalog";
 import { ContentSlider } from "../components/ContentSlider";
 import { AdSpace } from "../components/AdSpace";
-import { Play, Info, Zap } from "lucide-react";
+import { Play, Info, X } from "lucide-react";
 import { useRecommendations, useContinueWatching } from "../hooks/useRecommendations";
 import { SEO } from "../components/SEO";
 import { SectionErrorBoundary } from "../components/SectionErrorBoundary";
@@ -14,6 +14,7 @@ export default function Home() {
   const [films, setFilms] = useState<Film[]>([]);
   const [featuredFilm, setFeaturedFilm] = useState<Film | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
   const { filmCatalog } = useCatalog();
   const { user } = useAuth();
@@ -56,7 +57,7 @@ export default function Home() {
       },
       {
         title: 'All Movies',
-        filter: (f: Film) => true
+        filter: () => true
       },
       {
         title: 'Romance',
@@ -147,7 +148,7 @@ export default function Home() {
                   Watch Now
                 </button>
                 <button
-                  onClick={() => navigate(`/watch/${featuredFilm.id}`)}
+                  onClick={() => setShowModal(true)}
                   className="flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-lg font-semibold transition-all border border-white/40 text-sm sm:text-base"
                 >
                   <Info className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -196,6 +197,84 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {showModal && featuredFilm && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowModal(false)}
+        >
+          <div
+            className="relative bg-slate-950 border border-slate-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 p-2 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors z-10"
+            >
+              <X className="w-6 h-6 text-white" />
+            </button>
+
+            <div className="relative h-64 sm:h-80">
+              <img
+                src={(featuredFilm as any).backdrop_url || featuredFilm.poster_url || '/placeholder.jpg'}
+                alt={featuredFilm.title}
+                className="w-full h-full object-cover rounded-t-xl"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent" />
+            </div>
+
+            <div className="p-6 sm:p-8 -mt-20 relative">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                {featuredFilm.title}
+              </h2>
+
+              <div className="flex flex-wrap items-center gap-3 mb-6 text-slate-300">
+                <span className="px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded">
+                  {featuredFilm.rating}
+                </span>
+                <span>•</span>
+                <span>{featuredFilm.release_year}</span>
+                <span>•</span>
+                <span>{featuredFilm.runtime_min} min</span>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-6">
+                <span
+                  className="px-3 py-1 bg-slate-800 text-slate-300 text-sm rounded-full"
+                >
+                  {featuredFilm.genre}
+                </span>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-white mb-3">Description</h3>
+                <p className="text-slate-300 leading-relaxed whitespace-pre-line">
+                  {featuredFilm.synopsis || featuredFilm.logline}
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowModal(false);
+                    navigate(`/watch/${featuredFilm.id}`);
+                  }}
+                  className="flex flex-1 items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors"
+                >
+                  <Play className="w-5 h-5 fill-white" />
+                  Watch Now
+                </button>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-semibold transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

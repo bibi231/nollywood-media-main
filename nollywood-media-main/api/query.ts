@@ -24,7 +24,7 @@ const ALLOWED_TABLES = [
 const AUTH_REQUIRED_TABLES = [
     'user_content_uploads', 'user_uploads', 'watch_history', 'watchlists',
     'user_follows', 'user_preferences', 'notifications', 'playlists',
-    'playlist_items', 'watch_progress', 'content_reports',
+    'playlist_items', 'watch_progress', 'content_reports', 'users', 'user_roles'
 ];
 
 // Public-read tables
@@ -183,27 +183,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(401).json({ data: null, error: { message: 'Authentication required for write operations' } });
         }
 
+        // Admin-only tables
+        const ADMIN_ONLY_TABLES = ['users', 'user_roles'];
+        if (ADMIN_ONLY_TABLES.includes(safeTable) && user?.role !== 'admin') {
+            return res.status(403).json({ data: null, error: { message: 'Admin privileges required' } });
+        }
+
         // --- BOLA HARDENING START ---
-        // If not an admin, enforce ownership on protected tables
-        const isPersonalTable = AUTH_REQUIRED_TABLES.includes(safeTable);
+        // If not an admin, enforce ownership on protected tables and specific public tables
+        const PUBLIC_USER_TABLES = ['film_comments', 'film_likes', 'comment_likes', 'user_profiles', 'creator_profiles'];
+        const isPersonalTable = AUTH_REQUIRED_TABLES.includes(safeTable) || PUBLIC_USER_TABLES.includes(safeTable);
         const isAdmin = user?.role === 'admin';
 
         if (isPersonalTable && !isAdmin && user) {
-            // 1. Force filter by user_id for select/update/delete/upsert
-            if (['select', 'update', 'delete', 'upsert'].includes(operation)) {
+            // Map the ownership column (profiles use 'id', others use 'user_id')
+            const ownerColumn = ['user_profiles', 'creator_profiles'].includes(safeTable) ? 'id' : 'user_id';
+
+            // 1. Force filter by owner for select/update/delete/upsert (if not a public read operation)
+            if (['update', 'delete', 'upsert'].includes(operation) || (operation === 'select' && !PUBLIC_READ_TABLES.includes(safeTable))) {
                 if (!body.filters) body.filters = [];
-                // Remove any existing user_id filters to prevent bypass
-                body.filters = body.filters.filter(f => f.column !== 'user_id');
-                // Inject the verified user_id
-                body.filters.push({ column: 'user_id', op: 'eq', value: user.userId });
+                // Remove any existing user_id/id filters to prevent bypass
+                body.filters = body.filters.filter(f => f.column !== ownerColumn);
+                // Inject the verified user ID
+                body.filters.push({ column: ownerColumn, op: 'eq', value: user.userId });
             }
 
-            // 2. Force user_id in data for insert/update/upsert
+            // 2. Force owner ID in data for insert/update/upsert
             if (['insert', 'update', 'upsert'].includes(operation) && body.data) {
                 if (Array.isArray(body.data)) {
-                    body.data = body.data.map(d => ({ ...d, user_id: user.userId }));
+                    body.data = body.data.map(d => ({ ...d, [ownerColumn]: user.userId }));
                 } else {
-                    body.data = { ...body.data, user_id: user.userId };
+                    body.data = { ...body.data, [ownerColumn]: user.userId };
                 }
             }
         }
@@ -249,9 +259,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const result = await query(sql, params);
 
                 if (single) {
+                    // Apply Edge Caching for public tables (60 seconds)
+                    if (PUBLIC_READ_TABLES.includes(safeTable)) {
+                        res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30');
+                    }
                     return res.status(200).json({ data: result[0] || null, error: null });
                 }
 
+                // Apply Edge Caching for public tables (60 seconds)
+                if (PUBLIC_READ_TABLES.includes(safeTable)) {
+                    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30');
+                }
                 return res.status(200).json({ data: result, error: null });
             }
 

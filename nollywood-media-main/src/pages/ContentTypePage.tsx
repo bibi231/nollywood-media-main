@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { SEO } from "../components/SEO";
 import { ContentCard } from "../components/ContentCard";
 import { BackButton } from "../components/BackButton";
 import { useCatalog } from "../context/CatalogProvider";
@@ -12,6 +13,11 @@ const contentTypeLabels: Record<string, string> = {
   music: "Music & Concerts",
   audio: "Audio Tracks",
   documentary: "Documentaries",
+};
+
+const formatTitle = (text: string) => {
+  if (!text) return "";
+  return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
 export default function ContentTypePage() {
@@ -61,7 +67,9 @@ export default function ContentTypePage() {
 
   return (
     <div className="bg-white dark:bg-gray-900 min-h-screen pt-14 lg:pl-60">
-      <div className="px-6 py-6">
+      <SEO title={`${formatTitle(type || '')} Content`} description={`Browse all ${formatTitle(type || '')} content on NaijaMation.`} />
+
+      <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-3">
           <BackButton fallback="/catalog" label="Back to Catalog" />
         </div>

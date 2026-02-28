@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { SEO } from '../components/SEO';
 import { supabase } from '../lib/supabase';
 import { FilmRow } from '../components/FilmRow';
 import { TrendingUp, Flame, Clock, Eye, Home } from 'lucide-react';
@@ -76,8 +77,8 @@ export default function Trending() {
     const { data } = await supabase
       .from('trending_content')
       .select(`
-        *,
-        film:films(*)
+  *,
+  film: films(*)
       `)
       .order('trend_score', { ascending: false })
       .limit(20);
@@ -197,8 +198,10 @@ export default function Trending() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="pt-20 pb-10">
+    <div className="bg-white dark:bg-gray-900 min-h-screen pt-14 lg:pl-60">
+      <SEO title="Trending Now" description="Discover the most popular Nollywood films and series trending right now." />
+
+      <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="px-4 sm:px-6 lg:px-8 mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -224,11 +227,10 @@ export default function Trending() {
                 <button
                   key={tab.id}
                   onClick={() => setSelectedTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium whitespace-nowrap transition-colors ${
-                    selectedTab === tab.id
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium whitespace-nowrap transition-colors ${selectedTab === tab.id
                       ? 'bg-red-600 text-white'
                       : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <Icon className="h-5 w-5" />
                   {tab.label}

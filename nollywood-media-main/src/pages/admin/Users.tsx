@@ -25,13 +25,13 @@ export function AdminUsers() {
 
       if (rolesError) throw rolesError;
 
-      const rolesMap = new Map(rolesData?.map((r) => [r.user_id, r.role]) || []);
+      const rolesMap = new Map(rolesData?.map((r: any) => [r.user_id, r.role]) || []);
 
-      const { data: { users: authUsers }, error: usersError } = await supabase.auth.admin.listUsers();
+      const { data: authUsers, error: usersError } = await supabase.from('users').select('id, email, created_at');
 
       if (usersError) throw usersError;
 
-      const usersWithRoles = authUsers.map((user) => ({
+      const usersWithRoles = (authUsers || []).map((user: any) => ({
         id: user.id,
         email: user.email || '',
         created_at: user.created_at,
@@ -116,11 +116,10 @@ export function AdminUsers() {
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <span
-                        className={`inline-flex items-center space-x-1 rounded px-2 py-1 text-xs font-medium ${
-                          user.role === 'admin' || user.role === 'super_admin'
-                            ? 'bg-red-600/20 text-red-400'
-                            : 'bg-slate-800 text-slate-300'
-                        }`}
+                        className={`inline-flex items-center space-x-1 rounded px-2 py-1 text-xs font-medium ${user.role === 'admin' || user.role === 'super_admin'
+                          ? 'bg-red-600/20 text-red-400'
+                          : 'bg-slate-800 text-slate-300'
+                          }`}
                       >
                         {(user.role === 'admin' || user.role === 'super_admin') && (
                           <Shield className="h-3 w-3" />

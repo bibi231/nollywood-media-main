@@ -27,6 +27,7 @@ export function AddFilm() {
     studio_label: '',
     tags: '',
     status: 'published',
+    scheduled_for: '',
   });
 
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -229,6 +230,7 @@ export function AddFilm() {
         poster_path: posterFileName,
         thumbnail_url: thumbnailUrl,
         status: formData.status,
+        scheduled_for: formData.status === 'scheduled' && formData.scheduled_for ? new Date(formData.scheduled_for).toISOString() : null,
         views: 0,
         created_at: new Date().toISOString(),
       };
@@ -722,8 +724,26 @@ export function AddFilm() {
             >
               <option value="published">Published</option>
               <option value="draft">Draft</option>
+              <option value="scheduled">Scheduled Premiere</option>
             </select>
           </div>
+
+          {formData.status === 'scheduled' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Premiere Date & Time <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="datetime-local"
+                name="scheduled_for"
+                value={formData.scheduled_for}
+                onChange={handleChange}
+                required={formData.status === 'scheduled'}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                disabled={loading}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-6 border-t border-gray-200">
