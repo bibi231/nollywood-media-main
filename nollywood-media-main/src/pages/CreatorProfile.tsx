@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useCatalog } from '../context/CatalogProvider';
 import { UserPlus, UserCheck, Users, Film as FilmIcon, Calendar, CheckCircle, Bell, BellRing, BellOff } from 'lucide-react';
 import { CommunityPosts } from '../components/CommunityPosts';
+import { BackButton } from '../components/BackButton';
 
 interface CreatorProfile {
     id: string;
@@ -155,7 +156,10 @@ export default function CreatorProfile() {
     }
 
     return (
-        <div className="bg-black min-h-screen pt-14 lg:pl-60 text-white">
+        <div className="bg-black min-h-screen pt-14 lg:pl-60 text-white relative">
+            <div className="absolute top-20 left-4 z-10 lg:left-64">
+                <BackButton fallback="/" label="Back" />
+            </div>
             <div className="relative border-b border-gray-800">
                 {/* Header Banner */}
                 <div className="h-48 bg-gradient-to-br from-red-600 via-red-800 to-gray-900">

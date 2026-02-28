@@ -212,12 +212,14 @@ export function Upload() {
       console.error('Upload error details:', err);
       let errorMessage = 'Failed to upload content';
 
-      if (err.message?.includes('storage')) {
-        errorMessage = `Storage Error: ${err.message}. Please check your R2 bucket permissions.`;
-      } else if (err.message?.includes('database') || err.message?.includes('insert')) {
-        errorMessage = `Database Registry Error: ${err.message}. Your file may have uploaded, but was not recorded.`;
+      const errorStr = typeof err === 'string' ? err : (err.message || '');
+
+      if (errorStr.includes('storage')) {
+        errorMessage = `Storage Error: ${errorStr}. Please check your R2 bucket permissions.`;
+      } else if (errorStr.includes('database') || errorStr.includes('insert')) {
+        errorMessage = `Database Registry Error: ${errorStr}. Your file may have uploaded, but was not recorded.`;
       } else {
-        errorMessage = err.message || 'An unexpected error occurred during upload.';
+        errorMessage = errorStr || 'An unexpected error occurred during upload.';
       }
 
       setError(errorMessage);
