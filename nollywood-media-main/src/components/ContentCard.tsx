@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
-import { Eye, Play, Star } from 'lucide-react';
+import { Eye, Play, Star, Crown } from 'lucide-react';
+import { useState, useRef } from 'react';
 import { Movie, TVShow } from '../types';
 import { WatchlistButton } from './WatchlistButton';
+import { WatchLaterButton } from './WatchLaterButton';
 import { LazyImage } from './LazyImage';
 
 interface ContentCardProps {
@@ -14,15 +16,47 @@ export function ContentCard({ content, onPlayClick }: ContentCardProps) {
   const views = (content as any).views || 0;
   const formattedViews = views >= 1000 ? `${(views / 1000).toFixed(1)}k` : views.toString();
 
+  const [isHovered, setIsHovered] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(true);
+    }, 500); // 500ms delay before playing video
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    setIsHovered(false);
+  };
+
   return (
-    <div className="group cursor-pointer" onClick={onPlayClick}>
+    <div
+      className="group cursor-pointer"
+      onClick={onPlayClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* Thumbnail */}
       <div className="relative aspect-video bg-gray-800 rounded-xl overflow-hidden mb-3 ring-1 ring-white/5 hover:ring-red-500/30 transition-all duration-300 hover-lift">
-        <LazyImage
-          src={content.poster_url}
-          alt={content.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-        />
+        {!isHovered || !(content as any).video_url ? (
+          <LazyImage
+            src={content.poster_url}
+            alt={content.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+          />
+        ) : (
+          <video
+            src={(content as any).video_url}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+          />
+        )}
 
         {/* Duration badge */}
         <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-sm text-white text-[11px] font-medium px-1.5 py-0.5 rounded-md">
@@ -52,17 +86,24 @@ export function ContentCard({ content, onPlayClick }: ContentCardProps) {
           </div>
         </div>
 
-        {/* Watchlist button */}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100">
+        {/* Watchlist/WatchLater buttons */}
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100 flex flex-col gap-2 relative z-20">
+          <WatchLaterButton filmId={content.id} size="sm" />
           <WatchlistButton filmId={content.id} size="sm" />
         </div>
 
         {/* Rating badge */}
-        <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <span className="flex items-center gap-1 px-2 py-1 bg-black/70 backdrop-blur-sm text-white text-[11px] rounded-md font-semibold">
+        <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-1 px-2 py-1 bg-black/70 backdrop-blur-sm text-white text-[11px] rounded-md font-semibold">
             <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
             {content.rating}
           </span>
+          {(content as any).is_members_only && (
+            <span className="flex items-center gap-1 px-2 py-1 bg-yellow-500/90 text-white text-[11px] rounded-md font-semibold shadow-sm">
+              <Crown className="w-3 h-3" />
+              Premium
+            </span>
+          )}
         </div>
       </div>
 

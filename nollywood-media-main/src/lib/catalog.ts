@@ -25,6 +25,8 @@ export interface Film {
   content_type?: string;
   availability_note?: string;
   licensing_note?: string;
+  is_members_only?: boolean;
+  is_staff_pick?: boolean;
 }
 
 export type SortKey = "newest" | "az" | "runtime";
@@ -59,7 +61,7 @@ export function matchesQuery(f: Film, q: string): boolean {
     f.logline,
     f.synopsis,
     f.setting_region,
-    f.cast,
+    f.cast_members,
     f.director,
     f.tags,
   ]

@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
-        const { planId, email, userId } = req.body;
+        const { planId, email, userId, type = 'subscription', amount: tipAmount, creatorId, filmId } = req.body;
 
         // --- PAYMENT SECURITY HARDENING START ---
         const user = getUserFromRequest(req);
@@ -25,6 +25,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(403).json({ error: 'Unauthorized: Metadata mismatch' });
         }
         // --- PAYMENT SECURITY HARDENING END ---
+
+        if (type === 'tip') {
+            if (!tipAmount || !creatorId) {
+                return res.status(400).json({ error: 'Missing tip amount or creatorId' });
+            }
+
+            const amountKobo = Math.round(tipAmount * 100);
+            const response = await fetch('https://api.paystack.co/transaction/initialize', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${PAYSTACK_SECRET}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email,
+                    amount: amountKobo,
+                    callback_url: `${process.env.VITE_APP_URL || 'http://localhost:5173'}/watch/${filmId}?tip=success`,
+                    metadata: {
+                        type: 'tip',
+                        userId,
+                        creatorId,
+                        amount: tipAmount
+                    }
+                }),
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Paystack initialization failed');
+
+            return res.status(200).json({
+                data: {
+                    authorization_url: data.data.authorization_url,
+                    reference: data.data.reference,
+                    access_code: data.data.access_code
+                },
+                error: null
+            });
+        }
 
         if (!email || !planId) {
             return res.status(400).json({ error: 'Email and planId are required' });

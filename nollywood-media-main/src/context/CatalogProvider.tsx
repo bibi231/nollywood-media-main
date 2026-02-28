@@ -34,7 +34,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
         console.warn('⚠️ No films found in database, using mock data fallback.');
         setFilms(MOCK_FILMS);
       } else {
-        const filmsData: Film[] = data.map(film => ({
+        const filmsData: Film[] = data.map((film: any) => ({
           id: film.id,
           title: film.title,
           poster_url: film.poster_url || '',
@@ -55,6 +55,8 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
           tags: film.tags,
           views: film.views || 0,
           created_at: film.created_at,
+          is_members_only: film.is_members_only,
+          is_staff_pick: film.is_staff_pick,
         }));
         setFilms(filmsData);
       }

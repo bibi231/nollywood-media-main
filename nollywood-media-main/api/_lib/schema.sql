@@ -403,3 +403,47 @@ ON CONFLICT (user_id) DO UPDATE SET role = 'admin';
 INSERT INTO user_profiles (id, email, display_name)
 SELECT id, email, display_name FROM users WHERE email = 'admin@naijamation.com'
 ON CONFLICT (id) DO NOTHING;
+
+-- PHASE 14 SCHEMA ADDITIONS
+-- Achievements and Verification
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS achievements text[] DEFAULT '{}'::text[];
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS is_verified boolean DEFAULT false;
+
+-- User Activity Table
+CREATE TABLE IF NOT EXISTS public.user_activity (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+  action_type TEXT NOT NULL,
+  target_id UUID,
+  target_type TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_user_activity_user_created ON public.user_activity(user_id, created_at DESC);
+
+-- Staff Picks and Members Only
+ALTER TABLE public.films ADD COLUMN IF NOT EXISTS is_staff_pick boolean DEFAULT false;
+ALTER TABLE public.films ADD COLUMN IF NOT EXISTS is_members_only boolean DEFAULT false;
+
+-- Notification Levels
+ALTER TABLE public.user_follows ADD COLUMN IF NOT EXISTS notification_level text DEFAULT 'personalized';
+
+-- Notifications Table
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  content TEXT NOT NULL,
+  link TEXT,
+  read boolean DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Watch Later Queue
+CREATE TABLE IF NOT EXISTS public.watch_later (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+  film_id UUID REFERENCES public.films(id) ON DELETE CASCADE,
+  added_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, film_id)
+);

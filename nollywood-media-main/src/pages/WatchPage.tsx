@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Share2, Flag, Eye, Play, Maximize, Check, X, Heart, ThumbsDown } from "lucide-react";
+import { Share2, Flag, Eye, Play, Maximize, Check, X, Heart, ThumbsDown, CheckCircle, Crown, Gift } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { EnhancedVideoPlayer } from "../components/EnhancedVideoPlayer";
@@ -31,6 +31,7 @@ interface Film {
   views: number;
   status?: string;
   scheduled_for?: string;
+  is_members_only?: boolean;
 }
 
 interface Comment {
@@ -49,9 +50,10 @@ interface Comment {
 
 export default function WatchPage() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, tier } = useAuth();
   const navigate = useNavigate();
   const [film, setFilm] = useState<Film | null>(null);
+  const [creatorProfile, setCreatorProfile] = useState<any>(null);
   const [relatedFilms, setRelatedFilms] = useState<Film[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFullDescription, setShowFullDescription] = useState(false);
@@ -65,6 +67,21 @@ export default function WatchPage() {
   const [dislikesCount, setDislikesCount] = useState(0);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [showTipModal, setShowTipModal] = useState(false);
+  const [tipAmount, setTipAmount] = useState(500);
+  const [isTipping, setIsTipping] = useState(false);
+  const [tipSuccessToast, setTipSuccessToast] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tip') === 'success') {
+      setTipSuccessToast(true);
+      setTimeout(() => setTipSuccessToast(false), 5000);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('tip');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
 
   const handleShareClick = async () => {
     const url = window.location.href;
@@ -94,6 +111,34 @@ export default function WatchPage() {
     }, 2000);
   };
 
+  const handleTip = async () => {
+    if (!user) {
+      alert("Please log in to send a tip.");
+      return;
+    }
+    setIsTipping(true);
+    try {
+      const response = await fetch('/api/paystack/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'tip',
+          email: user.email,
+          userId: user.id,
+          amount: tipAmount,
+          creatorId: creatorProfile?.user_id || (film as any)?.user_id || film?.id,
+          filmId: id
+        })
+      });
+      const result = await response.json();
+      if (result.error) throw new Error(result.error);
+      window.location.href = result.data.authorization_url;
+    } catch (e: any) {
+      alert("Failed to initialize tip: " + e.message);
+      setIsTipping(false);
+    }
+  };
+
   useEffect(() => {
     if (id) {
       loadFilmAndComments();
@@ -103,6 +148,18 @@ export default function WatchPage() {
       loadDislikeStatus();
     }
   }, [id, user]);
+
+  const loadCreatorDetails = async (userId: string) => {
+    try {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) return;
+      const { data } = await supabase
+        .from('creator_profiles')
+        .select('verification_status')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (data) setCreatorProfile(data);
+    } catch (e) { }
+  };
 
   const loadRatings = async () => {
     try {
@@ -264,6 +321,9 @@ export default function WatchPage() {
         }
       } else {
         setFilm(filmData);
+        if ((filmData as any).user_id) {
+          loadCreatorDetails((filmData as any).user_id);
+        }
         // Increment views
         fetch('/api/films/view', {
           method: 'POST',
@@ -344,6 +404,20 @@ export default function WatchPage() {
                   <p className="text-gray-400 mt-6 text-sm font-medium">Hang out in the comments below until the premiere starts.</p>
                 </div>
               </div>
+            ) : film.is_members_only && tier === 'free' ? (
+              <div className="w-full h-full relative">
+                <img src={film.poster_url} alt={film.title} className="w-full h-full object-cover opacity-30" />
+                <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white text-center p-6">
+                  <div className="bg-yellow-500/20 p-4 rounded-full border border-yellow-500/30 mb-4 backdrop-blur-md">
+                    <Crown className="w-12 h-12 text-yellow-500" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">Members Only Content</h3>
+                  <p className="text-gray-300 max-w-md mb-6">This video is exclusive to NaijaMation subscribers. Upgrade your account to unlock premium ad-free viewing and exclusive content.</p>
+                  <Link to="/account/subscription" className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors shadow-lg shadow-red-600/30">
+                    Upgrade to Premium
+                  </Link>
+                </div>
+              </div>
             ) : film.video_url || film.hls_url ? (
               <EnhancedVideoPlayer
                 src={film.video_url}
@@ -419,6 +493,14 @@ export default function WatchPage() {
                 <span className="hidden sm:inline">{dislikesCount > 0 ? dislikesCount : 'Dislike'}</span>
               </button>
               <button
+                onClick={() => setShowTipModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 dark:text-yellow-500 rounded-full text-sm font-medium transition-all"
+                title="Super Thanks"
+              >
+                <Gift className="w-5 h-5" />
+                <span className="hidden sm:inline">Tip</span>
+              </button>
+              <button
                 onClick={handleShareClick}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 rounded-full text-sm font-medium transition-all text-gray-900 dark:text-white"
               >
@@ -437,12 +519,15 @@ export default function WatchPage() {
           </div>
 
           <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4 mb-6">
-            <div className="flex flex-wrap gap-3 mb-2 text-sm">
+            <div className="flex flex-wrap items-center gap-3 mb-2 text-sm">
               <Link
                 to={`/creator/${(film as any).user_id || film.studio_label}`}
-                className="font-semibold text-gray-900 dark:text-white hover:text-red-500 hover:underline transition-colors"
+                className="font-semibold text-gray-900 dark:text-white hover:text-red-500 hover:underline transition-colors flex items-center gap-1"
               >
                 {film.studio_label}
+                {creatorProfile?.verification_status === 'verified' && (
+                  <CheckCircle className="h-4 w-4 text-blue-500 fill-blue-500/20" />
+                )}
               </Link>
               {film.genre && (
                 <Link to={`/genre/${encodeURIComponent(film.genre)}`} className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors">
@@ -542,40 +627,97 @@ export default function WatchPage() {
           ))}
         </div>
       </div>
-
-      {/* Report Modal */}
-      {showReportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowReportModal(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Report Content</h2>
-              <button onClick={() => setShowReportModal(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-            {reportSubmitted ? (
-              <div className="p-8 text-center">
-                <Check className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                <p className="text-gray-900 dark:text-white font-semibold">Report Submitted</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Thank you. We'll review this content.</p>
-              </div>
-            ) : (
-              <div className="p-4 space-y-2">
-                {['Inappropriate content', 'Copyright infringement', 'Spam or misleading', 'Harmful or dangerous', 'Other'].map((reason) => (
-                  <button
-                    key={reason}
-                    onClick={() => handleReport(reason)}
-                    className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm transition-colors"
-                  >
-                    {reason}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
+
+    {
+    showTipModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-800 shadow-2xl relative">
+          <button onClick={() => setShowTipModal(false)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+          <div className="flex flex-col items-center mb-6">
+            <div className="bg-yellow-500/20 p-4 rounded-full mb-4">
+              <Gift className="w-10 h-10 text-yellow-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center">Support {film?.studio_label}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-2">Your tip goes directly to the creator to help them make more incredible Nollywood content.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            {[500, 1000, 2500, 5000, 10000].map(amt => (
+              <button
+                key={amt}
+                onClick={() => setTipAmount(amt)}
+                className={`py-3 rounded-xl font-bold text-sm transition-all border ${tipAmount === amt ? 'bg-yellow-500 text-black border-yellow-500' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+              >
+                ₦{amt.toLocaleString()}
+              </button>
+            ))}
+            <div className="col-span-3 mt-2 relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₦</span>
+              <input
+                type="number"
+                value={tipAmount}
+                onChange={e => setTipAmount(Number(e.target.value))}
+                className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl py-3 pl-10 pr-4 text-gray-900 dark:text-white focus:ring-2 focus:ring-yellow-500 outline-none font-bold"
+              />
+            </div>
+          </div>
+          <button
+            onClick={handleTip}
+            disabled={isTipping || tipAmount < 100}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-bold text-lg hover:from-yellow-500 hover:to-yellow-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-yellow-500/20"
+          >
+            {isTipping ? 'Connecting to Paystack...' : `Send ₦${tipAmount.toLocaleString()}`}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  {
+    tipSuccessToast && (
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-6 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2 animate-bounce z-50">
+        <Gift className="w-5 h-5" />
+        Thank you for supporting {film?.studio_label}!
+      </div>
+    )
+  }
+
+  {/* Report Modal */ }
+  {
+    showReportModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowReportModal(false)}>
+        <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Report Content</h2>
+            <button onClick={() => setShowReportModal(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+          {reportSubmitted ? (
+            <div className="p-8 text-center">
+              <Check className="w-12 h-12 text-green-500 mx-auto mb-3" />
+              <p className="text-gray-900 dark:text-white font-semibold">Report Submitted</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Thank you. We'll review this content.</p>
+            </div>
+          ) : (
+            <div className="p-4 space-y-2">
+              {['Inappropriate content', 'Copyright infringement', 'Spam or misleading', 'Harmful or dangerous', 'Other'].map((reason) => (
+                <button
+                  key={reason}
+                  onClick={() => handleReport(reason)}
+                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm transition-colors"
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+  </div >
   );
 }
-

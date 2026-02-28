@@ -30,7 +30,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: data.message || 'Transaction verification failed' });
         }
 
-        const { userId, planId, planCode } = data.data.metadata;
+        const metadata = data.data.metadata || {};
+        const { userId, planId, planCode, type, creatorId, amount } = metadata;
+
+        if (type === 'tip') {
+            await query(`
+                CREATE TABLE IF NOT EXISTS user_tips (
+                    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+                    user_id uuid,
+                    creator_id uuid,
+                    amount numeric,
+                    status text,
+                    created_at timestamp DEFAULT now()
+                )
+            `);
+            await query(
+                'INSERT INTO user_tips (user_id, creator_id, amount, status, created_at) VALUES ($1, $2, $3, $4, now())',
+                [userId, creatorId, amount, 'success']
+            ).catch(e => console.error("Error inserting tip:", e));
+
+            return res.status(200).json({
+                data: { status: 'success', message: 'Tip received successfully' },
+                error: null
+            });
+        }
 
         // 1. Update user profile
         await query(

@@ -102,6 +102,9 @@ const CreatorProfile = lazy(() => import("./pages/CreatorProfile"));
 const Community = lazy(() => import("./pages/Community"));
 const AccountPlaylists = lazy(() => import("./pages/account/Playlists").then(m => ({ default: m.Playlists })));
 const Clips = lazy(() => import("./pages/Clips"));
+const Subscriptions = lazy(() => import("./pages/feed/Subscriptions"));
+const ActivityFeed = lazy(() => import("./pages/account/ActivityFeed"));
+
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen bg-slate-950">
@@ -211,6 +214,7 @@ export default function App() {
                     <Route path="my-uploads" element={<MyUploads />} />
                     <Route path="notifications" element={<Notifications />} />
                     <Route path="subscription" element={<Subscription />} />
+                    <Route path="activity" element={<ActivityFeed />} />
                     <Route path="settings" element={<AccountSettings />} />
                     <Route path="playlists" element={<AccountPlaylists />} />
                   </Route>
@@ -227,6 +231,7 @@ export default function App() {
                           <Route path="/region/:name" element={<RegionPage />} />
                           <Route path="/content/music" element={<Music />} />
                           <Route path="/content/:type" element={<ContentTypePage />} />
+                          <Route path="/feed/subscriptions" element={<Subscriptions />} />
                           <Route path="/search" element={<SearchPage />} />
                           <Route path="/watch/:id" element={<WatchPage />} />
                           <Route path="/terms" element={<Terms />} />

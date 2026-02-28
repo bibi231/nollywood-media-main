@@ -3,10 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useCatalog } from '../context/CatalogProvider';
-import { BackButton } from '../components/BackButton';
-import { UserPlus, UserCheck, Users, Film as FilmIcon, Calendar, CheckCircle } from 'lucide-react';
+import { UserPlus, UserCheck, Users, Film as FilmIcon, Calendar, CheckCircle, Bell, BellRing, BellOff } from 'lucide-react';
 import { CommunityPosts } from '../components/CommunityPosts';
-import { SEO } from '../components/SEO';
 
 interface CreatorProfile {
     id: string;
@@ -27,6 +25,8 @@ export default function CreatorProfile() {
 
     const [creator, setCreator] = useState<CreatorProfile | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);
+    const [notificationLevel, setNotificationLevel] = useState<'all' | 'personalized' | 'none'>('personalized');
+    const [showNotificationMenu, setShowNotificationMenu] = useState(false);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'videos' | 'community'>('videos');
 
@@ -68,11 +68,14 @@ export default function CreatorProfile() {
             if (user && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.user_id)) {
                 const { data: followData } = await supabase
                     .from('user_follows')
-                    .select('id')
+                    .select('id, notification_level')
                     .eq('follower_id', user.id)
                     .eq('following_id', data.user_id)
                     .maybeSingle();
                 setIsFollowing(!!followData);
+                if (followData) {
+                    setNotificationLevel(followData.notification_level || 'personalized');
+                }
             }
         } catch (err) {
             console.error('Error loading creator:', err);
@@ -94,15 +97,33 @@ export default function CreatorProfile() {
                     .delete()
                     .eq('follower_id', user.id)
                     .eq('following_id', creator.user_id);
+                setIsFollowing(false);
             } else {
                 await supabase.from('user_follows').insert({
                     follower_id: user.id,
                     following_id: creator.user_id,
+                    notification_level: 'personalized'
                 });
+                setIsFollowing(true);
+                setNotificationLevel('personalized');
             }
-            setIsFollowing(!isFollowing);
         } catch (err) {
             console.error('Error toggling follow:', err);
+        }
+    };
+
+    const handleNotificationChange = async (level: 'all' | 'personalized' | 'none') => {
+        if (!user || !creator) return;
+        try {
+            await supabase
+                .from('user_follows')
+                .update({ notification_level: level })
+                .eq('follower_id', user.id)
+                .eq('following_id', creator.user_id);
+            setNotificationLevel(level);
+            setShowNotificationMenu(false);
+        } catch (err) {
+            console.error('Error updating notification level:', err);
         }
     };
 
@@ -156,10 +177,10 @@ export default function CreatorProfile() {
                             )}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                                 {creator.channel_name}
                                 {creator.verification_status === 'verified' && (
-                                    <CheckCircle className="h-5 w-5 text-blue-400 fill-blue-400" />
+                                    <CheckCircle className="h-6 w-6 text-blue-500 fill-blue-500/20" />
                                 )}
                             </h1>
                             <div className="flex items-center gap-4 mt-1 text-sm text-gray-300">
@@ -177,16 +198,55 @@ export default function CreatorProfile() {
                                 </span>
                             </div>
                         </div>
-                        <button
-                            onClick={handleFollowToggle}
-                            className={`flex-shrink-0 flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${isFollowing
-                                ? 'bg-white/20 backdrop-blur text-white hover:bg-white/30'
-                                : 'bg-red-600 hover:bg-red-700 text-white'
-                                }`}
-                        >
-                            {isFollowing ? <UserCheck className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
-                            {isFollowing ? 'Following' : 'Follow'}
-                        </button>
+                        <div className="relative flex items-center gap-2">
+                            <button
+                                onClick={handleFollowToggle}
+                                className={`flex-shrink-0 flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${isFollowing
+                                    ? 'bg-white/20 backdrop-blur text-white hover:bg-white/30'
+                                    : 'bg-red-600 hover:bg-red-700 text-white'
+                                    }`}
+                            >
+                                {isFollowing ? <UserCheck className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+                                {isFollowing ? 'Following' : 'Follow'}
+                            </button>
+
+                            {isFollowing && (
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowNotificationMenu(!showNotificationMenu)}
+                                        className="p-2.5 bg-white/20 backdrop-blur text-white hover:bg-white/30 rounded-lg transition-colors flex items-center justify-center"
+                                        title="Notification Settings"
+                                    >
+                                        {notificationLevel === 'all' && <BellRing className="w-5 h-5" />}
+                                        {notificationLevel === 'personalized' && <Bell className="w-5 h-5" />}
+                                        {notificationLevel === 'none' && <BellOff className="w-5 h-5" />}
+                                    </button>
+
+                                    {showNotificationMenu && (
+                                        <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 border border-gray-800 rounded-lg shadow-xl overflow-hidden z-50 py-1">
+                                            <button
+                                                onClick={() => handleNotificationChange('all')}
+                                                className={`w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-800 transition-colors ${notificationLevel === 'all' ? 'text-white font-medium bg-gray-800/50' : 'text-gray-400'}`}
+                                            >
+                                                <BellRing className="w-4 h-4" /> All
+                                            </button>
+                                            <button
+                                                onClick={() => handleNotificationChange('personalized')}
+                                                className={`w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-800 transition-colors ${notificationLevel === 'personalized' ? 'text-white font-medium bg-gray-800/50' : 'text-gray-400'}`}
+                                            >
+                                                <Bell className="w-4 h-4" /> Personalized
+                                            </button>
+                                            <button
+                                                onClick={() => handleNotificationChange('none')}
+                                                className={`w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-800 transition-colors ${notificationLevel === 'none' ? 'text-white font-medium bg-gray-800/50' : 'text-gray-400'}`}
+                                            >
+                                                <BellOff className="w-4 h-4" /> None
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

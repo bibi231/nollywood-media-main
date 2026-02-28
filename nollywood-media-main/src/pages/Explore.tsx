@@ -19,6 +19,7 @@ export default function Explore() {
     newReleases: [],
     trending: [],
   });
+  const [staffPicks, setStaffPicks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,6 +51,23 @@ export default function Explore() {
         newReleases,
         trending
       });
+
+      // Fetch Staff Picks
+      const staffRes = await fetch(`${apiBase}/api/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: 'films',
+          operation: 'select',
+          filters: [{ column: 'is_staff_pick', op: 'eq', value: true }],
+          order: [{ column: 'created_at', ascending: false }],
+          limit: 15
+        })
+      });
+      if (staffRes.ok) {
+        const staffData = await staffRes.json();
+        setStaffPicks(staffData.data || []);
+      }
     } catch (error) {
       console.error('Error loading explore data:', error);
     } finally {
@@ -117,6 +135,13 @@ export default function Explore() {
             })}
           </div>
         </div>
+
+        {staffPicks.length > 0 && (
+          <FilmRow
+            title="NaijaMation Staff Picks"
+            films={staffPicks}
+          />
+        )}
 
         {recommendations.forYou.length > 0 && (
           <FilmRow

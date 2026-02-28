@@ -1,4 +1,4 @@
-import { Home, Compass, Film, Tv, Music, Sparkles, X, TrendingUp, Clock, Upload, Star, Smartphone } from 'lucide-react';
+import { Home, Compass, Film, Tv, Music, Sparkles, X, TrendingUp, Clock, Upload, Star, Smartphone, PlaySquare, Activity } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
@@ -28,6 +28,8 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
   const mainLinks = [
     { icon: Home, label: 'Home', path: '/' },
+    { icon: PlaySquare, label: 'Subscriptions', path: '/feed/subscriptions' },
+    { icon: Activity, label: 'Activity Feed', path: '/account/activity' },
     { icon: Smartphone, label: 'Clips', path: '/clips' },
     { icon: Compass, label: 'Explore', path: '/catalog' },
     { icon: TrendingUp, label: 'Trending', path: '/trending' },
