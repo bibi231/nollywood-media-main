@@ -29,7 +29,7 @@ export default function Privacy() {
               <h2 className="text-2xl font-bold text-white">Data We Collect</h2>
             </div>
             <p>
-              We collect information you provide directly to us, such as when you create an account, subscribe to a plan, or contact support. This includes your email address, name, and payment information (processed securely by Paystack/Stripe).
+              We collect information you provide directly to us, such as when you create an account, subscribe to a plan, or contact support. This includes your email address, name, and payment information (processed securely by Paystack/PayPal).
             </p>
           </section>
 

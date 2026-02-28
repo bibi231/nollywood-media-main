@@ -64,7 +64,7 @@ export default function Terms() {
               <h2 className="text-2xl font-bold text-white">4. Subscriptions & Payments</h2>
             </div>
             <p>
-              NaijaMation offers tiered subscription plans. Payments are processed via Paystack or Stripe. Subscriptions automatically renew unless canceled at least 24 hours before the end of the current period. Refunds are handled on a case-by-case basis in accordance with local regulations.
+              NaijaMation offers tiered subscription plans. Payments are processed via Paystack or PayPal. Subscriptions automatically renew unless canceled at least 24 hours before the end of the current period. Refunds are handled on a case-by-case basis in accordance with local regulations.
             </p>
           </section>
 

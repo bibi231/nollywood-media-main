@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Trash2, Edit2, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { UserBadge, AchievementType } from './UserBadge';
 
 interface Comment {
   id: string;
@@ -16,6 +17,8 @@ interface Comment {
   user_profile: {
     display_name: string;
     avatar_url: string;
+    is_verified?: boolean;
+    achievements?: AchievementType[];
   } | null;
 }
 
@@ -45,7 +48,7 @@ export function Comments({ filmId }: CommentsProps) {
         .from('film_comments')
         .select(`
           *,
-          user_profile:user_profiles!film_comments_user_id_fkey(display_name, avatar_url)
+          user_profile:user_profiles!film_comments_user_id_fkey(display_name, avatar_url, is_verified, achievements)
         `)
         .eq('film_id', filmId)
         .order('created_at', { ascending: false });
@@ -294,9 +297,17 @@ export function Comments({ filmId }: CommentsProps) {
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h4 className="font-semibold text-gray-900">
-                      {comment.user_profile?.display_name || 'User'}
-                    </h4>
+                    <div className="flex items-center flex-wrap gap-y-1">
+                      <h4 className="font-semibold text-gray-900 mr-2">
+                        {comment.user_profile?.display_name || 'User'}
+                      </h4>
+                      {comment.user_profile?.is_verified && (
+                        <UserBadge type="Verified" isVerified={true} />
+                      )}
+                      {comment.user_profile?.achievements?.map((ach, idx) => (
+                        <UserBadge key={idx} type={ach} />
+                      ))}
+                    </div>
                     <p className="text-xs text-gray-500">
                       {new Date(comment.created_at).toLocaleDateString()}
                     </p>

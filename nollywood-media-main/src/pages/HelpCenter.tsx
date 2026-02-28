@@ -21,7 +21,7 @@ export default function HelpCenter() {
       icon: CreditCard,
       questions: [
         { q: 'How do I cancel my subscription?', a: 'Go to your Account settings, then select "Subscription" to manage or cancel your plan.' },
-        { q: 'What payment methods are accepted?', a: 'We accept Credit/Debit cards, Bank Transfers, and Mobile Money via Paystack and Stripe.' }
+        { q: 'What payment methods are accepted?', a: 'We accept Credit/Debit cards, Bank Transfers, and Mobile Money via Paystack and PayPal.' }
       ]
     },
     {

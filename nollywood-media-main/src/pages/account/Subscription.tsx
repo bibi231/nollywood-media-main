@@ -362,7 +362,7 @@ export function Subscription() {
           Secure Payment Experience
         </h3>
         <p className="text-gray-400 mb-8 max-w-2xl">
-          Your transactions are protected with industry-standard TLS encryption. We partner with Stripe and Paystack to ensure seamless local and international payments.
+          Your transactions are protected with industry-standard TLS encryption. We partner with PayPal and Paystack to ensure seamless local and international payments.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {['Mastercard', 'Visa', 'Bank Transfer', 'Mobile Money'].map((method) => (
