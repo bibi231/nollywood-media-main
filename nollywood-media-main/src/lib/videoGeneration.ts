@@ -27,26 +27,19 @@ export interface GenerationStatus {
     provider?: string;
 }
 
-// ─── API Keys ───────────────────────────────────────────────────────────────
+// ─── Backend API Routes ────────────────────────────────────────────────────────
+const GENERATE_API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/ai/generate` : '/api/ai/generate';
+const STATUS_API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/ai/status` : '/api/ai/status';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-const UNIFICALLY_API_KEY = import.meta.env.VITE_UNIFICALLY_API_KEY as string | undefined;
-const LEONARDO_API_KEY = import.meta.env.VITE_LEONARDO_API_KEY as string | undefined;
-
-const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-const UNIFICALLY_BASE = 'https://api.unifically.com/v1';
-const LEONARDO_BASE = 'https://cloud.leonardo.ai/api/rest/v1';
+import { supabase } from './supabase';
 
 // ─── Provider availability ──────────────────────────────────────────────────
 
 export type AIProvider = 'gemini' | 'seedance' | 'leonardo';
 
 export function getAvailableProviders(): AIProvider[] {
-    const providers: AIProvider[] = [];
-    if (GEMINI_API_KEY) providers.push('gemini');
-    if (UNIFICALLY_API_KEY) providers.push('seedance');
-    if (LEONARDO_API_KEY) providers.push('leonardo');
-    return providers;
+    // We assume all providers are available on the backend; the backend will throw an explicit error if its keys are missing.
+    return ['gemini', 'seedance', 'leonardo'];
 }
 
 export function isAIGenerationAvailable(): boolean {
@@ -66,186 +59,95 @@ function buildPrompt(options: VideoGenerationOptions): string {
     return `${options.prompt}. Style: ${STYLE_DESCRIPTIONS[options.style]}. African/Nollywood aesthetic.`;
 }
 
-// ─── Gemini Veo Provider ────────────────────────────────────────────────────
+// ─── API Proxies ────────────────────────────────────────────────────────────
 
-async function generateWithGemini(options: VideoGenerationOptions): Promise<GenerationResult> {
-    if (!GEMINI_API_KEY) {
-        return { success: false, error: 'Gemini API key not configured', provider: 'gemini' };
+async function getAuthHeaders() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+        throw new Error('Authentication required');
     }
-
-    const prompt = buildPrompt(options);
-
-    const response = await fetch(
-        `${GEMINI_BASE}/models/veo-2.0-generate-001:predictLongRunning?key=${GEMINI_API_KEY}`,
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                instances: [{ prompt }],
-                parameters: {
-                    aspect_ratio: options.aspectRatio, // lowercase underscore often used in v1beta
-                    duration_seconds: parseInt(options.duration),
-                    sample_count: 1,
-                },
-            }),
-        }
-    );
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData?.error?.message || `Gemini API error ${response.status}`);
-    }
-
-    const data = await response.json();
     return {
-        success: true,
-        operationId: data.name || data.operationId || data.id,
-        provider: 'gemini',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
     };
 }
 
-async function checkGeminiStatus(operationId: string): Promise<GenerationStatus> {
-    if (!GEMINI_API_KEY) return { state: 'failed', error: 'API key not configured', provider: 'gemini' };
+// ─── Gemini Veo Provider ────────────────────────────────────────────────────
 
-    const response = await fetch(`${GEMINI_BASE}/operations/${operationId}?key=${GEMINI_API_KEY}`);
-    if (!response.ok) throw new Error(`Gemini status check failed: ${response.status}`);
+async function generateWithGemini(options: VideoGenerationOptions): Promise<GenerationResult> {
+    const headers = await getAuthHeaders();
+    const response = await fetch(GENERATE_API_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ...options, provider: 'gemini' }),
+    });
 
-    const data = await response.json();
-
-    if (data.done) {
-        if (data.error) return { state: 'failed', error: data.error.message, provider: 'gemini' };
-        const videoUri =
-            data.response?.generatedVideos?.[0]?.uri ||
-            data.response?.predictions?.[0]?.videoUri;
-        return { state: 'completed', progress: 100, videoUrl: videoUri, provider: 'gemini' };
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.error || `Gemini API error ${response.status}`);
     }
 
-    return { state: 'processing', progress: data.metadata?.progress || 50, provider: 'gemini' };
+    const data = await response.json();
+    return { success: true, operationId: data.operationId, provider: 'gemini' };
+}
+
+async function checkGeminiStatus(operationId: string): Promise<GenerationStatus> {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${STATUS_API_URL}?provider=gemini&operationId=${operationId}`, { headers });
+    if (!response.ok) throw new Error(`Gemini status check failed: ${response.status}`);
+    return await response.json();
 }
 
 // ─── Seedance via Unifically Provider ───────────────────────────────────────
 
 async function generateWithSeedance(options: VideoGenerationOptions): Promise<GenerationResult> {
-    if (!UNIFICALLY_API_KEY) {
-        return { success: false, error: 'Unifically API key not configured', provider: 'seedance' };
-    }
-
-    const prompt = buildPrompt(options);
-
-    const response = await fetch(`${UNIFICALLY_BASE}/video/generations`, {
+    const headers = await getAuthHeaders();
+    const response = await fetch(GENERATE_API_URL, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${UNIFICALLY_API_KEY}`,
-        },
-        body: JSON.stringify({
-            model: 'seedance-1.0',
-            prompt,
-            duration: parseInt(options.duration),
-            aspect_ratio: options.aspectRatio,
-        }),
+        headers,
+        body: JSON.stringify({ ...options, provider: 'seedance' }),
     });
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData?.error?.message || `Unifically API error ${response.status}`);
+        throw new Error(errorData?.error || `Seedance API error ${response.status}`);
     }
 
     const data = await response.json();
-    return {
-        success: true,
-        operationId: data.id || data.task_id,
-        provider: 'seedance',
-    };
+    return { success: true, operationId: data.operationId, provider: 'seedance' };
 }
 
 async function checkSeedanceStatus(operationId: string): Promise<GenerationStatus> {
-    if (!UNIFICALLY_API_KEY) return { state: 'failed', error: 'API key not configured', provider: 'seedance' };
-
-    const response = await fetch(`${UNIFICALLY_BASE}/video/generations/${operationId}`, {
-        headers: { 'Authorization': `Bearer ${UNIFICALLY_API_KEY}` },
-    });
-
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${STATUS_API_URL}?provider=seedance&operationId=${operationId}`, { headers });
     if (!response.ok) throw new Error(`Seedance status check failed: ${response.status}`);
-
-    const data = await response.json();
-
-    if (data.status === 'completed' || data.status === 'succeeded') {
-        const videoUrl = data.output?.url || data.video_url || data.result?.url;
-        return { state: 'completed', progress: 100, videoUrl, provider: 'seedance' };
-    }
-
-    if (data.status === 'failed') {
-        return { state: 'failed', error: data.error || 'Generation failed', provider: 'seedance' };
-    }
-
-    return { state: 'processing', progress: data.progress || 50, provider: 'seedance' };
+    return await response.json();
 }
 
 // ─── Leonardo AI Provider ───────────────────────────────────────────────────
 
 async function generateWithLeonardo(options: VideoGenerationOptions): Promise<GenerationResult> {
-    if (!LEONARDO_API_KEY) {
-        return { success: false, error: 'Leonardo API key not configured', provider: 'leonardo' };
-    }
-
-    const prompt = buildPrompt(options);
-
-    // Leonardo supports direct text-to-video via this endpoint
-    const response = await fetch(`${LEONARDO_BASE}/generations-text-to-video`, {
+    const headers = await getAuthHeaders();
+    const response = await fetch(GENERATE_API_URL, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${LEONARDO_API_KEY}`,
-        },
-        body: JSON.stringify({
-            prompt,
-            model: 'MOTION2', // Default motion model
-            width: options.aspectRatio === '9:16' ? 576 : 1024,
-            height: options.aspectRatio === '9:16' ? 1024 : 576,
-            motionStrength: 5,
-        }),
+        headers,
+        body: JSON.stringify({ ...options, provider: 'leonardo' }),
     });
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData?.error?.message || `Leonardo API error ${response.status}`);
+        throw new Error(errorData?.error || `Leonardo API error ${response.status}`);
     }
 
     const data = await response.json();
-    return {
-        success: true,
-        operationId: data.motionVideoGenerationJob?.generationId || data.generationId,
-        provider: 'leonardo',
-    };
+    return { success: true, operationId: data.operationId, provider: 'leonardo' };
 }
 
 async function checkLeonardoStatus(operationId: string): Promise<GenerationStatus> {
-    if (!LEONARDO_API_KEY) return { state: 'failed', error: 'API key not configured', provider: 'leonardo' };
-
-    const response = await fetch(`${LEONARDO_BASE}/generations/${operationId}`, {
-        headers: { 'Authorization': `Bearer ${LEONARDO_API_KEY}` },
-    });
-
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${STATUS_API_URL}?provider=leonardo&operationId=${operationId}`, { headers });
     if (!response.ok) throw new Error(`Leonardo status check failed: ${response.status}`);
-
-    const data = await response.json();
-    const generation = data.generations_by_pk;
-
-    if (generation?.status === 'COMPLETE') {
-        const videoUrl = generation.generated_videos?.[0]?.url;
-        if (!videoUrl) {
-            // If video is missing but generation is complete, check if it's still being prepared
-            return { state: 'processing', progress: 95, provider: 'leonardo' };
-        }
-        return { state: 'completed', progress: 100, videoUrl, provider: 'leonardo' };
-    }
-
-    if (generation?.status === 'FAILED') {
-        return { state: 'failed', error: 'Leonardo generation failed', provider: 'leonardo' };
-    }
-
-    return { state: 'processing', progress: 50, provider: 'leonardo' };
+    return await response.json();
 }
 
 // ─── Public API (round-robin with fallback) ─────────────────────────────────

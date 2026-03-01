@@ -18,7 +18,7 @@ const ALLOWED_TABLES = [
     'watch_history', 'watchlists', 'user_follows', 'creator_profiles',
     'user_preferences', 'notifications', 'playback_events', 'trending_content',
     'content_reports', 'playlists', 'playlist_items', 'watch_progress', 'users',
-    'user_activity', 'watch_later' // Phase 14
+    'user_activity', 'watch_later', 'ai_generation_logs' // Phase 14
 ];
 
 // Tables that require authentication
@@ -26,7 +26,7 @@ const AUTH_REQUIRED_TABLES = [
     'user_content_uploads', 'user_uploads', 'watch_history', 'watchlists',
     'user_follows', 'user_preferences', 'notifications', 'playlists',
     'playlist_items', 'watch_progress', 'content_reports', 'users', 'user_roles',
-    'user_activity', 'watch_later' // Phase 14
+    'user_activity', 'watch_later', 'ai_generation_logs' // Phase 14
 ];
 
 // Public-read tables
