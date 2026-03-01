@@ -311,11 +311,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const sql = `INSERT INTO ${safeTable} (${cols.join(', ')}) VALUES (${values.join(', ')}) RETURNING *`;
 
                     // Supabase sends object/arrays natively, but Postgres driver expects serialized string for jsonb columns
+                    // Supabase sends objects/arrays natively. 
+                    // For Postgres, we stringify objects for JSONB columns, but NOT arrays for native ARRAY columns.
                     const params = cols.map(c => {
                         const val = record[c];
-                        if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
-                            return JSON.stringify(val);
-                        }
+                        if (Array.isArray(val)) return val;
+                        if (typeof val === 'object' && val !== null) return JSON.stringify(val);
                         return val;
                     });
 
@@ -338,7 +339,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const setClause = setCols.map((c, i) => `${c} = $${i + 1}`).join(', ');
                 const setParams = setCols.map(c => {
                     const val = (data as any)[c];
-                    return (Array.isArray(val) || (typeof val === 'object' && val !== null)) ? JSON.stringify(val) : val;
+                    if (Array.isArray(val)) return val;
+                    if (typeof val === 'object' && val !== null) return JSON.stringify(val);
+                    return val;
                 });
 
                 const { clause, params: whereParams } = buildWhereClause(filters || [], setCols.length + 1);
@@ -381,7 +384,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 const params = cols.map(c => {
                     const val = record[c];
-                    return (Array.isArray(val) || (typeof val === 'object' && val !== null)) ? JSON.stringify(val) : val;
+                    if (Array.isArray(val)) return val;
+                    if (typeof val === 'object' && val !== null) return JSON.stringify(val);
+                    return val;
                 });
                 const result = await query(sql, params);
 
