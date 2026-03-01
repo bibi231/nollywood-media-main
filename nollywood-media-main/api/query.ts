@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { query } from './_lib/db.js';
-import { getUserFromRequest, corsHeaders } from './_lib/auth.js';
+import { query } from '../_lib/db';
+import { getUserFromRequest, corsHeaders } from '../_lib/auth';
 
 /**
  * Generic query endpoint — replaces PostgREST/Supabase .from() calls
