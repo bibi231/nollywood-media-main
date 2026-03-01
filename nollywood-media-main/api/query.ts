@@ -154,12 +154,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             try { body = JSON.parse(body); } catch { /* ignore */ }
         }
 
+        const table = body?.table;
+        const operation = body?.operation;
+
         if (!table) {
             return res.status(400).json({ data: null, error: { message: 'Missing table name' } });
         }
 
         const safeTable = sanitizeIdentifier(table).trim();
-        const operation = body.operation;
         const isAllowed = ALLOWED_TABLES.some(t => t.trim() === safeTable);
 
         console.log('DEBUG_QUERY_V3:', { table, safeTable, isAllowed, op: operation });
@@ -217,8 +219,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 body.filters.push({ column: ownerColumn, op: 'eq', value: user.userId });
             }
 
-            // 2. Force owner ID in data for insert/update/upsert
-            if (['insert', 'update', 'upsert'].includes(operation) && body.data) {
+            // 2. Force owner ID in data for update/upsert (omitting insert as the frontend already provides it securely 
+            // and rewriting the array/object structure here breaks PostgREST mappings)
+            if (['update', 'upsert'].includes(operation) && body.data) {
                 if (Array.isArray(body.data)) {
                     body.data = body.data.map(d => ({ ...d, [ownerColumn]: user.userId }));
                 } else {
@@ -294,10 +297,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const cols = Object.keys(records[0]).map(sanitizeIdentifier);
                 const allResults: any[] = [];
 
+                console.log('DEBUG_QUERY_V3_INSERT_PAYLOAD:', { table: safeTable, numRecords: records.length, firstRecordKeys: Object.keys(records[0]) });
+
                 for (const record of records) {
                     const values = cols.map((_, i) => `$${i + 1}`);
                     const sql = `INSERT INTO ${safeTable} (${cols.join(', ')}) VALUES (${values.join(', ')}) RETURNING *`;
-                    const params = cols.map(c => record[c]);
+
+                    // Supabase sends object/arrays natively, but Postgres driver expects serialized string for jsonb columns
+                    const params = cols.map(c => {
+                        const val = record[c];
+                        if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
+                            return JSON.stringify(val);
+                        }
+                        return val;
+                    });
+
+                    console.log('DEBUG_QUERY_V3_SQL_INSERT:', { sql, params });
+
                     const result = await query(sql, params);
                     allResults.push(...result);
                 }
@@ -313,7 +329,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 const setCols = Object.keys(data).map(sanitizeIdentifier);
                 const setClause = setCols.map((c, i) => `${c} = $${i + 1}`).join(', ');
-                const setParams = setCols.map(c => (data as any)[c]);
+                const setParams = setCols.map(c => {
+                    const val = (data as any)[c];
+                    return (Array.isArray(val) || (typeof val === 'object' && val !== null)) ? JSON.stringify(val) : val;
+                });
 
                 const { clause, params: whereParams } = buildWhereClause(filters || [], setCols.length + 1);
 
@@ -353,7 +372,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
                 sql += ` RETURNING *`;
 
-                const params = cols.map(c => record[c]);
+                const params = cols.map(c => {
+                    const val = record[c];
+                    return (Array.isArray(val) || (typeof val === 'object' && val !== null)) ? JSON.stringify(val) : val;
+                });
                 const result = await query(sql, params);
 
                 return res.status(200).json({ data: result[0] || null, error: null });
@@ -363,7 +385,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 return res.status(400).json({ data: null, error: { message: `Unknown operation: ${operation}` } });
         }
     } catch (err: any) {
-        console.error('Query error:', err);
+        console.error('CRITICAL QUERY ERROR BOUNDARY:', {
+            message: err.message,
+            stack: err.stack,
+            fullError: err
+        });
         return res.status(500).json({ data: null, error: { message: err.message || 'Internal server error' } });
     }
 }
