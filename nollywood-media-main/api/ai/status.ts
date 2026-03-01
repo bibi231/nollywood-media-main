@@ -1,15 +1,32 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getUserFromRequest, corsHeaders } from '../_lib/auth.js';
+import { getUserFromRequest, setCorsHeaders } from '../_lib/auth';
+import { checkRateLimit, getClientIp } from '../_lib/rateLimit';
+
+// ═══ Timeout wrapper ═══
+async function fetchWithTimeout(url: string, opts: RequestInit, timeoutMs = 15000): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { ...opts, signal: controller.signal });
+    } finally {
+        clearTimeout(timer);
+    }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // 1. Handling CORS
-    Object.entries(corsHeaders()).forEach(([k, v]) => res.setHeader(k, v));
+    setCorsHeaders(req, res);
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    // 2. Auth Check
+    // Rate limit: 30 status polls per minute per IP
+    const clientIp = getClientIp(req);
+    const rl = checkRateLimit(`ai-status:${clientIp}`, { limit: 30, windowSeconds: 60 });
+    if (!rl.allowed) {
+        return res.status(429).json({ error: 'Too many status checks. Please slow down polling.' });
+    }
+
     const user = getUserFromRequest(req);
     if (!user) {
-        return res.status(401).json({ error: 'Unauthorized: Missing or invalid Supabase JWT.' });
+        return res.status(401).json({ error: 'Authentication required.' });
     }
 
     if (req.method !== 'GET') {
@@ -23,11 +40,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'Missing provider or operationId' });
         }
 
+        // Sanitize operationId to prevent injection
+        const safeOpId = operationId.replace(/[^a-zA-Z0-9_\-\/\.]/g, '');
+
         if (provider === 'gemini') {
             const key = process.env.VITE_GEMINI_API_KEY;
-            if (!key) throw new Error('Gemini API key not configured on server.');
+            if (!key) throw new Error('Gemini API key not configured.');
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/operations/${operationId}?key=${key}`);
+            const response = await fetchWithTimeout(
+                `https://generativelanguage.googleapis.com/v1beta/operations/${safeOpId}?key=${key}`,
+                {},
+                15000
+            );
             if (!response.ok) throw new Error(`Gemini status check failed: ${response.status}`);
 
             const data = await response.json();
@@ -40,11 +64,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         } else if (provider === 'seedance') {
             const key = process.env.VITE_UNIFICALLY_API_KEY;
-            if (!key) throw new Error('Unifically/Seedance API key not configured on server.');
+            if (!key) throw new Error('Seedance API key not configured.');
 
-            const response = await fetch(`https://api.unifically.com/v1/video/generations/${operationId}`, {
-                headers: { 'Authorization': `Bearer ${key}` },
-            });
+            const response = await fetchWithTimeout(
+                `https://api.unifically.com/v1/video/generations/${safeOpId}`,
+                { headers: { 'Authorization': `Bearer ${key}` } },
+                15000
+            );
             if (!response.ok) throw new Error(`Seedance status check failed: ${response.status}`);
 
             const data = await response.json();
@@ -59,11 +85,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         } else if (provider === 'leonardo') {
             const key = process.env.VITE_LEONARDO_API_KEY;
-            if (!key) throw new Error('Leonardo API key not configured on server.');
+            if (!key) throw new Error('Leonardo API key not configured.');
 
-            const response = await fetch(`https://cloud.leonardo.ai/api/rest/v1/generations/${operationId}`, {
-                headers: { 'Authorization': `Bearer ${key}` },
-            });
+            const response = await fetchWithTimeout(
+                `https://cloud.leonardo.ai/api/rest/v1/generations/${safeOpId}`,
+                { headers: { 'Authorization': `Bearer ${key}` } },
+                15000
+            );
             if (!response.ok) throw new Error(`Leonardo status check failed: ${response.status}`);
 
             const data = await response.json();
@@ -79,10 +107,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
             return res.status(200).json({ state: 'processing', progress: 50, provider: 'leonardo' });
         } else {
-            return res.status(400).json({ error: `Unknown provider specified: ${provider}` });
+            return res.status(400).json({ error: `Unknown provider: ${provider}` });
         }
     } catch (err: any) {
-        console.error('Server side status check error:', err);
-        return res.status(500).json({ error: err.message || 'Internal server error during status check.' });
+        console.error('[AI] Status check error:', err.message);
+        return res.status(500).json({ error: err.message || 'Status check failed.' });
     }
 }
