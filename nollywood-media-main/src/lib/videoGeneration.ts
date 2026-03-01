@@ -35,11 +35,11 @@ import { supabase } from './supabase';
 
 // ─── Provider availability ──────────────────────────────────────────────────
 
-export type AIProvider = 'gemini' | 'seedance' | 'leonardo';
+export type AIProvider = 'gemini' | 'leonardo';
 
 export function getAvailableProviders(): AIProvider[] {
     // We assume all providers are available on the backend; the backend will throw an explicit error if its keys are missing.
-    return ['gemini', 'seedance', 'leonardo'];
+    return ['gemini', 'leonardo'];
 }
 
 export function isAIGenerationAvailable(): boolean {
@@ -98,31 +98,6 @@ async function checkGeminiStatus(operationId: string): Promise<GenerationStatus>
     return await response.json();
 }
 
-// ─── Seedance via Unifically Provider ───────────────────────────────────────
-
-async function generateWithSeedance(options: VideoGenerationOptions): Promise<GenerationResult> {
-    const headers = await getAuthHeaders();
-    const response = await fetch(GENERATE_API_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ ...options, provider: 'seedance' }),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData?.error || `Seedance API error ${response.status}`);
-    }
-
-    const data = await response.json();
-    return { success: true, operationId: data.operationId, provider: 'seedance' };
-}
-
-async function checkSeedanceStatus(operationId: string): Promise<GenerationStatus> {
-    const headers = await getAuthHeaders();
-    const response = await fetch(`${STATUS_API_URL}?provider=seedance&operationId=${operationId}`, { headers });
-    if (!response.ok) throw new Error(`Seedance status check failed: ${response.status}`);
-    return await response.json();
-}
 
 // ─── Leonardo AI Provider ───────────────────────────────────────────────────
 
@@ -154,13 +129,11 @@ async function checkLeonardoStatus(operationId: string): Promise<GenerationStatu
 
 const PROVIDER_GENERATORS: Record<AIProvider, (opts: VideoGenerationOptions) => Promise<GenerationResult>> = {
     gemini: generateWithGemini,
-    seedance: generateWithSeedance,
     leonardo: generateWithLeonardo,
 };
 
 const PROVIDER_STATUS_CHECKERS: Record<AIProvider, (id: string) => Promise<GenerationStatus>> = {
     gemini: checkGeminiStatus,
-    seedance: checkSeedanceStatus,
     leonardo: checkLeonardoStatus,
 };
 

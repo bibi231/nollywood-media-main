@@ -13,7 +13,7 @@ interface GenerationRequestBody {
     style: 'cinematic' | 'animated' | 'realistic' | 'documentary';
     duration: '5s' | '10s' | '15s';
     aspectRatio: '16:9' | '9:16' | '1:1';
-    provider: 'gemini' | 'seedance' | 'leonardo';
+    provider: 'gemini' | 'leonardo';
 }
 
 const STYLE_DESCRIPTIONS: Record<string, string> = {
@@ -30,7 +30,6 @@ function buildPrompt(options: Omit<GenerationRequestBody, 'provider'>): string {
 // ═══ CIRCUIT BREAKER ═══
 const circuitState: Record<string, { failures: number; lastFailure: number; open: boolean }> = {
     gemini: { failures: 0, lastFailure: 0, open: false },
-    seedance: { failures: 0, lastFailure: 0, open: false },
     leonardo: { failures: 0, lastFailure: 0, open: false },
 };
 const CIRCUIT_THRESHOLD = 3;    // failures before opening
@@ -205,35 +204,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const data = await response.json();
             operationId = data.name || data.operationId || data.id;
             recordProviderSuccess('gemini');
-
-        } else if (provider === 'seedance') {
-            const key = process.env.VITE_UNIFICALLY_API_KEY;
-            if (!key) throw new Error('Seedance API key not configured.');
-
-            const response = await fetchWithTimeout(
-                'https://api.unifically.com/v1/video/generations',
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-                    body: JSON.stringify({
-                        model: 'seedance-1.0',
-                        prompt: fullPrompt,
-                        duration: parseInt(options.duration),
-                        aspect_ratio: options.aspectRatio,
-                    }),
-                },
-                30000
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                recordProviderFailure('seedance');
-                throw new Error(errorData?.error?.message || `Seedance API error ${response.status}`);
-            }
-
-            const data = await response.json();
-            operationId = data.id || data.task_id;
-            recordProviderSuccess('seedance');
 
         } else if (provider === 'leonardo') {
             const key = process.env.VITE_LEONARDO_API_KEY;

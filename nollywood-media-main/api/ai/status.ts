@@ -62,27 +62,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
             return res.status(200).json({ state: 'processing', progress: data.metadata?.progress || 50, provider: 'gemini' });
 
-        } else if (provider === 'seedance') {
-            const key = process.env.VITE_UNIFICALLY_API_KEY;
-            if (!key) throw new Error('Seedance API key not configured.');
-
-            const response = await fetchWithTimeout(
-                `https://api.unifically.com/v1/video/generations/${safeOpId}`,
-                { headers: { 'Authorization': `Bearer ${key}` } },
-                15000
-            );
-            if (!response.ok) throw new Error(`Seedance status check failed: ${response.status}`);
-
-            const data = await response.json();
-            if (data.status === 'completed' || data.status === 'succeeded') {
-                const videoUrl = data.output?.url || data.video_url || data.result?.url;
-                return res.status(200).json({ state: 'completed', progress: 100, videoUrl, provider: 'seedance' });
-            }
-            if (data.status === 'failed') {
-                return res.status(200).json({ state: 'failed', error: data.error || 'Generation failed', provider: 'seedance' });
-            }
-            return res.status(200).json({ state: 'processing', progress: data.progress || 50, provider: 'seedance' });
-
         } else if (provider === 'leonardo') {
             const key = process.env.VITE_LEONARDO_API_KEY;
             if (!key) throw new Error('Leonardo API key not configured.');

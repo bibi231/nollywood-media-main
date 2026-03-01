@@ -59,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const accountId = process.env.R2_ACCOUNT_ID;
         const accessKey = process.env.R2_ACCESS_KEY_ID;
         const secretKey = process.env.R2_SECRET_ACCESS_KEY;
-        const bucketName = process.env.R2_BUCKET_NAME || 'naijamation-media';
+        const bucketName = process.env.R2_BUCKET_NAME || 'naijamation';
         const publicUrl = process.env.R2_PUBLIC_URL;
 
         // If R2 is not configured, return a mock/local URL

@@ -187,7 +187,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const user = getUserFromRequest(req);
         const authRequired = AUTH_REQUIRED_TABLES.includes(safeTable) && !PUBLIC_READ_TABLES.includes(safeTable);
 
-        if (authRequired && !user && operation !== 'select') {
+        if (authRequired && !user) {
             return res.status(401).json({ data: null, error: { message: 'Authentication required' } });
         }
 
@@ -201,10 +201,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (ADMIN_ONLY_TABLES.includes(safeTable) && user?.role !== 'admin') {
             // Exception: a user can query their own role
             if (safeTable === 'user_roles' && operation === 'select') {
-                const isFetchingOwnRole = body.filters?.some((f: any) => f.column === 'user_id' && f.op === 'eq' && f.value === user?.userId);
-                if (!isFetchingOwnRole) {
-                    return res.status(403).json({ data: null, error: { message: 'Admin privileges required to view other roles' } });
-                }
+                // Allowed. The BOLA hardening below will force the user_id filter to their own ID.
             } else {
                 return res.status(403).json({ data: null, error: { message: 'Admin privileges required' } });
             }
