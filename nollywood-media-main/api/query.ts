@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { query } from '../_lib/db';
-import { getUserFromRequest, corsHeaders } from '../_lib/auth';
+import { getUserFromRequest, corsHeaders, setCorsHeaders } from '../_lib/auth';
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '../_lib/rateLimit';
 
 /**
  * Generic query endpoint — replaces PostgREST/Supabase .from() calls
@@ -144,9 +145,18 @@ function buildWhereClause(filters: QueryFilter[], startParam: number = 1): { cla
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    Object.entries(corsHeaders()).forEach(([k, v]) => res.setHeader(k, v));
+    setCorsHeaders(req, res);
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ data: null, error: { message: 'Method not allowed' } });
+
+    // Rate limiting
+    const clientIp = getClientIp(req);
+    const rl = checkRateLimit(`query:${clientIp}`, RATE_LIMITS.query);
+    res.setHeader('X-RateLimit-Limit', RATE_LIMITS.query.limit.toString());
+    res.setHeader('X-RateLimit-Remaining', rl.remaining.toString());
+    if (!rl.allowed) {
+        return res.status(429).json({ data: null, error: { message: 'Too many requests. Please slow down.' } });
+    }
 
     try {
         let body: QueryRequest = req.body;

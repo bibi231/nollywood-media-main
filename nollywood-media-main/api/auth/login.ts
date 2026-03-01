@@ -1,12 +1,20 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { query } from '../_lib/db.js';
-import { signToken, corsHeaders } from '../_lib/auth.js';
+import { signToken, setCorsHeaders } from '../_lib/auth.js';
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '../_lib/rateLimit.js';
 import * as bcrypt from 'bcryptjs';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    Object.entries(corsHeaders()).forEach(([k, v]) => res.setHeader(k, v));
+    setCorsHeaders(req, res);
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    // Rate limit: 10 login attempts per minute per IP
+    const clientIp = getClientIp(req);
+    const rl = checkRateLimit(`auth:${clientIp}`, RATE_LIMITS.auth);
+    if (!rl.allowed) {
+        return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
+    }
 
     try {
         const { email, password } = req.body;
