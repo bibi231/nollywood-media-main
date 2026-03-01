@@ -101,6 +101,40 @@ export function Upload() {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
+  // ═══ Auto-extract thumbnail from video at 2s mark ═══
+  const extractThumbnailFromVideo = (file: File): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+
+      video.onloadeddata = () => {
+        video.currentTime = Math.min(2, video.duration * 0.1); // 2s or 10% in
+      };
+
+      video.onseeked = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { resolve(null); return; }
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => {
+            URL.revokeObjectURL(video.src);
+            resolve(blob);
+          }, 'image/jpeg', 0.85);
+        } catch {
+          resolve(null);
+        }
+      };
+
+      video.onerror = () => resolve(null);
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -128,51 +162,48 @@ export function Upload() {
       const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const bucketName = (videoFile.type.startsWith('audio/')) ? 'audio-content' : 'user-content';
 
-      setUploadProgress(10);
-
+      // ═══ STEP 1: Upload video with real progress tracking ═══
       const { data: uploadResult, error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(fileName, videoFile, {
-          cacheControl: '3600',
-          upsert: false,
+          onProgress: (percent: number) => setUploadProgress(Math.round(percent * 0.8)), // 0-80%
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) throw new Error(typeof uploadError === 'string' ? uploadError : 'Upload failed');
 
-      setUploadProgress(50);
+      setUploadProgress(80);
 
+      // ═══ STEP 2: Handle thumbnail (user-provided or auto-extracted) ═══
       let thumbnailPath = null;
-      if (thumbnailFile) {
-        const thumbExt = thumbnailFile.name.split('.').pop();
+      let thumbnailUrl = null;
+      const thumbToUpload = thumbnailFile || (videoFile.type.startsWith('video/') ? await extractThumbnailFromVideo(videoFile) : null);
+
+      if (thumbToUpload) {
+        const thumbExt = thumbnailFile ? thumbnailFile.name.split('.').pop() : 'jpg';
         const thumbFileName = `${user.id}/${Date.now()}-thumb.${thumbExt}`;
 
-        const { error: thumbUploadError } = await supabase.storage
+        const { data: thumbData, error: thumbError } = await supabase.storage
           .from('thumbnails')
-          .upload(thumbFileName, thumbnailFile);
+          .upload(thumbFileName, thumbToUpload instanceof File ? thumbToUpload : new File([thumbToUpload], `thumb.${thumbExt}`, { type: 'image/jpeg' }));
 
-        if (!thumbUploadError) {
-          thumbnailPath = thumbFileName;
+        if (!thumbError && thumbData) {
+          thumbnailPath = thumbData.path || thumbFileName;
+          thumbnailUrl = thumbData.publicUrl || supabase.storage.from('thumbnails').getPublicUrl(thumbFileName).data.publicUrl;
         }
       }
 
-      setUploadProgress(70);
+      setUploadProgress(90);
 
-      // Use the publicUrl returned by our improved adapter, or fallback to manual generation
+      // ═══ STEP 3: Build video URL ═══
       const videoUrl = uploadResult?.publicUrl ||
         supabase.storage.from(bucketName).getPublicUrl(fileName).data.publicUrl;
-
-      let thumbnailUrl = null;
-      if (thumbnailPath) {
-        thumbnailUrl = supabase.storage.from('thumbnails').getPublicUrl(thumbnailPath).data.publicUrl;
-      }
 
       const tagsArray = formData.tags
         .split(',')
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0);
 
-      setUploadProgress(90);
-
+      // ═══ STEP 4: Save to database ═══
       const { data: uploadData, error: dbError } = await supabase
         .from('user_content_uploads')
         .insert({
@@ -195,7 +226,7 @@ export function Upload() {
 
       if (dbError) {
         console.error('Database insert error:', dbError);
-        throw new Error(`Failed to save upload: ${dbError.message}`);
+        throw new Error(`Failed to save upload: ${typeof dbError === 'string' ? dbError : dbError.message || 'Database error'}`);
       }
 
       if (!uploadData || uploadData.length === 0) {
@@ -214,10 +245,16 @@ export function Upload() {
 
       const errorStr = typeof err === 'string' ? err : (err.message || '');
 
-      if (errorStr.includes('storage')) {
-        errorMessage = `Storage Error: ${errorStr}. Please check your R2 bucket permissions.`;
+      if (errorStr.includes('rate limit') || errorStr.includes('429')) {
+        errorMessage = 'Upload rate limit reached. Please wait a few minutes before trying again.';
+      } else if (errorStr.includes('File type') || errorStr.includes('not allowed')) {
+        errorMessage = errorStr;
+      } else if (errorStr.includes('too large') || errorStr.includes('Maximum size')) {
+        errorMessage = errorStr;
+      } else if (errorStr.includes('storage') || errorStr.includes('upload')) {
+        errorMessage = `Storage Error: ${errorStr}. Please check your connection and try again.`;
       } else if (errorStr.includes('database') || errorStr.includes('insert')) {
-        errorMessage = `Database Registry Error: ${errorStr}. Your file may have uploaded, but was not recorded.`;
+        errorMessage = `Database Error: ${errorStr}. Your file may have uploaded, but was not recorded.`;
       } else {
         errorMessage = errorStr || 'An unexpected error occurred during upload.';
       }

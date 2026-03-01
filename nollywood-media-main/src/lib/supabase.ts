@@ -190,53 +190,97 @@ class StorageBucket {
     this._bucket = bucket;
   }
 
-  async upload(path: string, file: File | Blob, _opts?: any): Promise<{ data: any; error: any }> {
-    try {
-      // Get presigned URL
-      const presignRes = await fetch(`${API_BASE}/api/presign`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders(),
-        },
-        body: JSON.stringify({
-          filename: path.split('/').pop() || path,
-          contentType: file.type || 'application/octet-stream',
-          bucket: this._bucket,
-        }),
-      });
+  async upload(
+    path: string,
+    file: File | Blob,
+    opts?: { onProgress?: (percent: number) => void; maxRetries?: number }
+  ): Promise<{ data: any; error: any }> {
+    const maxRetries = opts?.maxRetries ?? 3;
+    const onProgress = opts?.onProgress;
 
-      const presignData = await presignRes.json();
-      if (!presignRes.ok) {
-        return { data: null, error: presignData.error || 'Failed to get upload URL' };
-      }
-
-      // If R2 is configured, upload directly
-      if (presignData.uploadUrl) {
-        const uploadRes = await fetch(presignData.uploadUrl, {
-          method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // Step 1: Get presigned URL (with file size for server validation)
+        onProgress?.(2);
+        const presignRes = await fetch(`${API_BASE}/api/presign`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders(),
+          },
+          body: JSON.stringify({
+            filename: path.split('/').pop() || path,
+            contentType: file.type || 'application/octet-stream',
+            fileSize: file.size,
+            bucket: this._bucket,
+          }),
         });
 
-        if (!uploadRes.ok) {
-          return { data: null, error: 'Upload to storage failed' };
+        const presignData = await presignRes.json();
+        if (!presignRes.ok) {
+          throw new Error(presignData.error || 'Failed to get upload URL');
+        }
+
+        onProgress?.(5);
+
+        // Step 2: Upload via XHR for real progress tracking
+        if (presignData.uploadUrl) {
+          await new Promise<void>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('PUT', presignData.uploadUrl);
+            xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+
+            xhr.upload.onprogress = (e) => {
+              if (e.lengthComputable) {
+                // Map upload progress from 5% to 90% (leaving room for DB insert)
+                const uploadPercent = 5 + Math.round((e.loaded / e.total) * 85);
+                onProgress?.(uploadPercent);
+              }
+            };
+
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                resolve();
+              } else {
+                reject(new Error(`Upload failed with status ${xhr.status}`));
+              }
+            };
+
+            xhr.onerror = () => reject(new Error('Network error during upload'));
+            xhr.ontimeout = () => reject(new Error('Upload timed out'));
+            xhr.timeout = 600000; // 10 minutes
+
+            xhr.send(file);
+          });
+        }
+
+        onProgress?.(92);
+
+        // Success — return the paths
+        return {
+          data: {
+            path: presignData.path,
+            fullPath: presignData.path,
+            publicUrl: presignData.publicUrl
+          },
+          error: null
+        };
+      } catch (err: any) {
+        console.warn(`[Storage] Upload attempt ${attempt + 1}/${maxRetries + 1} failed:`, err.message);
+
+        if (attempt < maxRetries) {
+          // Exponential backoff: 1s, 2s, 4s
+          const delay = Math.pow(2, attempt) * 1000;
+          console.log(`[Storage] Retrying in ${delay}ms...`);
+          onProgress?.(0); // Reset progress for retry
+          await new Promise(r => setTimeout(r, delay));
+        } else {
+          console.error('[Storage] All upload attempts failed:', err);
+          return { data: null, error: err.message || 'Upload failed after retries' };
         }
       }
-
-      // Return both the simple path and the full public URL if available
-      return {
-        data: {
-          path: presignData.path,
-          fullPath: presignData.path,
-          publicUrl: presignData.publicUrl
-        },
-        error: null
-      };
-    } catch (err: any) {
-      console.error('[Storage] Upload caught error:', err);
-      return { data: null, error: err.message || 'Upload failed' };
     }
+    return { data: null, error: 'Upload failed' };
   }
 
   getPublicUrl(path: string): { data: { publicUrl: string } } {
