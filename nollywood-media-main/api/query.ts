@@ -154,13 +154,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             try { body = JSON.parse(body); } catch { /* ignore */ }
         }
 
-        const { table, operation, columns, filters, data, order, limit, offset, upsertConflict, single, count, head } = body || {};
-
         if (!table) {
             return res.status(400).json({ data: null, error: { message: 'Missing table name' } });
         }
 
         const safeTable = sanitizeIdentifier(table).trim();
+        const operation = body.operation;
         const isAllowed = ALLOWED_TABLES.some(t => t.trim() === safeTable);
 
         console.log('DEBUG_QUERY_V3:', { table, safeTable, isAllowed, op: operation });
@@ -188,7 +187,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Admin-only tables
         const ADMIN_ONLY_TABLES = ['users', 'user_roles'];
         if (ADMIN_ONLY_TABLES.includes(safeTable) && user?.role !== 'admin') {
-            return res.status(403).json({ data: null, error: { message: 'Admin privileges required' } });
+            // Exception: a user can query their own role
+            if (safeTable === 'user_roles' && operation === 'select') {
+                const isFetchingOwnRole = body.filters?.some((f: any) => f.column === 'user_id' && f.op === 'eq' && f.value === user?.userId);
+                if (!isFetchingOwnRole) {
+                    return res.status(403).json({ data: null, error: { message: 'Admin privileges required to view other roles' } });
+                }
+            } else {
+                return res.status(403).json({ data: null, error: { message: 'Admin privileges required' } });
+            }
         }
 
         // --- BOLA HARDENING START ---
@@ -220,6 +227,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
         }
         // --- BOLA HARDENING END ---
+
+        // Extract potentially modified body properties
+        const { columns, filters, data, order, limit, offset, upsertConflict, single, count, head } = body;
 
         switch (operation) {
             case 'select': {
