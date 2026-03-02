@@ -10,6 +10,32 @@ import { useRecommendations, useContinueWatching } from "../hooks/useRecommendat
 import { SEO } from "../components/SEO";
 import { SectionErrorBoundary } from "../components/SectionErrorBoundary";
 
+// Custom hook to fetch from our new ML API
+function useMLRecommendations(userId: string | null) {
+  const [recommendations, setRecommendations] = useState<Film[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRecs = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch('/api/analytics/recommendations?limit=20', {
+          headers: session ? { 'Authorization': `Bearer ${session.access_token}` } : {}
+        });
+        const data = await res.json();
+        setRecommendations(data);
+      } catch (err) {
+        console.error('ML Recs Error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecs();
+  }, [userId]);
+
+  return { recommendations, loading };
+}
+
 export default function Home() {
   const [films, setFilms] = useState<Film[]>([]);
   const [featuredFilm, setFeaturedFilm] = useState<Film | null>(null);
@@ -18,7 +44,7 @@ export default function Home() {
   const navigate = useNavigate();
   const { filmCatalog } = useCatalog();
   const { user } = useAuth();
-  const { recommendations } = useRecommendations(user?.id || null);
+  const { recommendations } = useMLRecommendations(user?.id || null);
   const { items: continueWatching } = useContinueWatching(user?.id || null);
 
   useEffect(() => {

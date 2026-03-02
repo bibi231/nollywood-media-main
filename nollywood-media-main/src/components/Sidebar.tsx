@@ -86,8 +86,8 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 key={link.path}
                 to={link.path}
                 onClick={handleLinkClick}
-                className={`flex items-center gap-6 px-3 py-2.5 rounded-lg transition-all duration-200 ${isActive(link.path)
-                  ? 'bg-gray-100 dark:bg-gray-800 font-medium text-gray-900 dark:text-white'
+                className={`flex items-center gap-6 px-3 py-2.5 rounded-lg transition-all duration-300 ${isActive(link.path)
+                  ? 'bg-red-600/10 dark:bg-red-600/20 font-medium text-red-600 dark:text-red-500 shadow-[inset_0_0_12px_rgba(220,38,38,0.1)] border-r-2 border-red-600'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:translate-x-1'
                   }`}
               >
@@ -108,8 +108,8 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 key={link.path}
                 to={link.path}
                 onClick={handleLinkClick}
-                className={`flex items-center gap-6 px-3 py-2.5 rounded-lg transition-all duration-200 ${isActive(link.path)
-                  ? 'bg-gray-100 dark:bg-gray-800 font-medium text-gray-900 dark:text-white'
+                className={`flex items-center gap-6 px-3 py-2.5 rounded-lg transition-all duration-300 ${isActive(link.path)
+                  ? 'bg-red-600/10 dark:bg-red-600/20 font-medium text-red-600 dark:text-red-500 shadow-[inset_0_0_12px_rgba(220,38,38,0.1)] border-r-2 border-red-600'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:translate-x-1'
                   }`}
               >
@@ -130,8 +130,8 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 key={link.path}
                 to={link.path}
                 onClick={handleLinkClick}
-                className={`flex items-center gap-6 px-3 py-2.5 rounded-lg transition-all duration-200 ${isActive(link.path)
-                  ? 'bg-gray-100 dark:bg-gray-800 font-medium text-gray-900 dark:text-white'
+                className={`flex items-center gap-6 px-3 py-2.5 rounded-lg transition-all duration-300 ${isActive(link.path)
+                  ? 'bg-red-600/10 dark:bg-red-600/20 font-medium text-red-600 dark:text-red-500 shadow-[inset_0_0_12px_rgba(220,38,38,0.1)] border-r-2 border-red-600'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:translate-x-1'
                   }`}
               >

@@ -16,6 +16,7 @@ interface AuthContextType {
   loading: boolean;
   tier: string;
   isAdmin: boolean;
+  isModerator: boolean;
   signOut: () => Promise<void>;
   refreshTier: () => Promise<void>;
 }
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   tier: 'free',
   isAdmin: false,
+  isModerator: false,
   signOut: async () => { },
   refreshTier: async () => { },
 });
@@ -35,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isModerator, setIsModerator] = useState(false);
   const [tier, setTier] = useState<string>('free');
 
   useEffect(() => {
@@ -58,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUser(null);
         setIsAdmin(false);
+        setIsModerator(false);
         setLoading(false);
       }
     });
@@ -71,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (authUser) {
         setUser(authUser as User);
         await Promise.all([
-          checkAdminStatus(authUser as User),
+          checkRoles(authUser as User),
           loadTier(authUser.id)
         ]);
       }
@@ -97,9 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const checkAdminStatus = async (user: User | null) => {
+  const checkRoles = async (user: User | null) => {
     if (!user) {
       setIsAdmin(false);
+      setIsModerator(false);
       return;
     }
 
@@ -111,13 +116,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
 
       if (!error && data) {
-        setIsAdmin(data.role === 'admin' || data.role === 'super_admin');
+        const role = data.role;
+        setIsAdmin(role === 'admin' || role === 'super_admin');
+        setIsModerator(role === 'moderator' || role === 'admin' || role === 'super_admin');
       } else {
         setIsAdmin(false);
+        setIsModerator(false);
       }
     } catch (err) {
-      console.error('Error checking admin status:', err);
+      console.error('Error checking roles:', err);
       setIsAdmin(false);
+      setIsModerator(false);
     }
   };
 
@@ -132,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, tier, isAdmin, signOut, refreshTier }}>
+    <AuthContext.Provider value={{ user, session, loading, tier, isAdmin, isModerator, signOut, refreshTier }}>
       {children}
     </AuthContext.Provider>
   );

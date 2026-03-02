@@ -10,6 +10,7 @@ import { StarRating } from "../components/StarRating";
 import { Comments } from "../components/Comments";
 import { BackButton } from "../components/BackButton";
 import { SEO } from "../components/SEO";
+import { VideoAd } from "../components/ads/VideoAd";
 
 import { MOCK_FILMS } from "../lib/mockData";
 
@@ -58,6 +59,7 @@ export default function WatchPage() {
   const [loading, setLoading] = useState(true);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [theaterMode, setTheaterMode] = useState(false);
+  const [adCompleted, setAdCompleted] = useState(false);
   const [averageRating, setAverageRating] = useState<number | null>(null);
   const [totalRatings, setTotalRatings] = useState(0);
   const [shareToast, setShareToast] = useState(false);
@@ -378,7 +380,7 @@ export default function WatchPage() {
   return (
     <div className={`bg-white dark:bg-gray-900 min-h-screen pt-14 ${!theaterMode ? 'lg:pl-60' : ''}`}>
       <SEO title={film.title} description={film.synopsis || film.logline || `Watch ${film.title} on NaijaMation`} ogImage={film.poster_url} ogType="video.movie" />
-      <div className={`flex gap-6 ${theaterMode ? 'max-w-full' : ''}`}>
+      <div className={`flex flex-col lg:flex-row gap-6 ${theaterMode ? 'max-w-full' : ''}`}>
         <div className={`flex-1 px-4 sm:px-6 py-6 ${theaterMode ? 'max-w-full' : 'max-w-6xl'}`}>
           <div className="mb-3">
             <BackButton fallback="/" label="Back" />
@@ -419,12 +421,21 @@ export default function WatchPage() {
                 </div>
               </div>
             ) : film.video_url || film.hls_url ? (
-              <EnhancedVideoPlayer
-                src={film.video_url}
-                hlsSrc={film.hls_url}
-                poster={film.poster_url}
-                filmId={film.id}
-              />
+              <div className="w-full h-full">
+                {!adCompleted ? (
+                  <VideoAd
+                    category={film.genre}
+                    onComplete={() => setAdCompleted(true)}
+                  />
+                ) : (
+                  <EnhancedVideoPlayer
+                    src={film.video_url}
+                    hlsSrc={film.hls_url}
+                    poster={film.poster_url}
+                    filmId={film.id}
+                  />
+                )}
+              </div>
             ) : (
               <div className="w-full h-full relative">
                 <img

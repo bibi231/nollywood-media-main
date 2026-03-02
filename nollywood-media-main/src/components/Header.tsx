@@ -112,8 +112,8 @@ export function Header({ onMenuClick }: HeaderProps) {
               <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
             </button>
             <Link to="/" className="flex items-center gap-1 sm:gap-2 shrink-0">
-              <Film className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
-              <span className="text-lg sm:text-xl font-semibold text-gray-900 truncate max-w-[120px] sm:max-w-none">NaijaMation</span>
+              <Film className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]" />
+              <span className="text-lg sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-orange-500 truncate max-w-[100px] xs:max-w-[140px] sm:max-w-none">NaijaMation</span>
             </Link>
           </div>
 
@@ -138,8 +138,12 @@ export function Header({ onMenuClick }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <button className="p-2 hover:bg-gray-100 rounded-full sm:hidden" title="Search">
-              <Search className="w-5 h-5 text-gray-700" />
+            <button
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full sm:hidden transition-colors"
+              title="Search"
+              onClick={() => navigate('/catalog')}
+            >
+              <Search className="w-5 h-5 text-gray-700 dark:text-gray-300" />
             </button>
             {user ? (
               <>

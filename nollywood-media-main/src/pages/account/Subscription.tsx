@@ -28,8 +28,11 @@ interface CurrentSubscription {
   plan: Plan;
 }
 
+import { useNavigate } from 'react-router-dom';
+
 export function Subscription() {
   const { user, refreshTier } = useAuth();
+  const navigate = useNavigate();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [currentSubscription, setCurrentSubscription] = useState<CurrentSubscription | null>(null);
   const [loading, setLoading] = useState(true);
@@ -85,30 +88,7 @@ export function Subscription() {
       alert('Please sign in to subscribe');
       return;
     }
-
-    try {
-      setLoading(true);
-      const response = await fetch('/api/paystack/initialize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planId: plan.id,
-          email: user.email,
-          userId: user.id
-        })
-      });
-
-      const result = await response.json();
-      if (result.error) throw new Error(result.error);
-
-      // Redirect to Paystack
-      window.location.href = result.data.authorization_url;
-    } catch (error: any) {
-      console.error('Error initializing payment:', error);
-      alert(error.message || 'Failed to initialize payment');
-    } finally {
-      setLoading(false);
-    }
+    navigate('/checkout', { state: { plan } });
   };
 
   const verifyPayment = async (reference: string) => {

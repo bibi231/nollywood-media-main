@@ -229,6 +229,7 @@ export function EnhancedVideoPlayer({
     if (!user || !filmId) return;
 
     try {
+      // 1. Log to legacy playback_events
       await supabase.from('playback_events').insert({
         user_id: user.id,
         film_id: filmId,
@@ -238,10 +239,37 @@ export function EnhancedVideoPlayer({
         quality: quality,
         device_type: /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'mobile' : 'desktop'
       });
+
+      // 2. Log to new ML Recommendation Engine
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch('/api/analytics/log', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          contentId: filmId,
+          contentType: 'film',
+          eventType: eventType === 'play' ? 'view' : eventType,
+          value: eventType === 'watch_time' ? 10 : 0 // Log in bits
+        })
+      });
     } catch (error) {
       console.error('Error tracking event:', error);
     }
   };
+
+  // ─── Watch Time Heartbeat ───
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (playing && user) {
+      interval = setInterval(() => {
+        trackEvent('watch_time', videoRef.current?.currentTime || 0);
+      }, 10000); // Heartbeat every 10s
+    }
+    return () => clearInterval(interval);
+  }, [playing, user, filmId]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;

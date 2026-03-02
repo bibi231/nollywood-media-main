@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   bio TEXT DEFAULT '',
   avatar_url TEXT,
   subscription_status TEXT DEFAULT 'free',
+  monetization_status TEXT DEFAULT 'none', -- none, eligible, pending, approved, rejected
+  watch_time_sec BIGINT DEFAULT 0,
+  subscriber_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -447,3 +450,202 @@ CREATE TABLE IF NOT EXISTS public.watch_later (
   added_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, film_id)
 );
+-- ═══ PHASE 5: NATIVE ADVERTISER MARKETPLACE ═══
+
+-- Advertiser Profiles
+CREATE TABLE IF NOT EXISTS advertiser_profiles (
+  id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  company_name TEXT NOT NULL,
+  website TEXT,
+  contact_email TEXT,
+  verified BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Ad Campaigns
+CREATE TABLE IF NOT EXISTS ad_campaigns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  advertiser_id UUID REFERENCES advertiser_profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'pending_approval', 'active', 'paused', 'completed', 'rejected')),
+  budget_total NUMERIC NOT NULL DEFAULT 0,
+  budget_remaining NUMERIC NOT NULL DEFAULT 0,
+  pricing_model TEXT DEFAULT 'CPM' CHECK (pricing_model IN ('CPM', 'CPC')),
+  price_per_unit NUMERIC DEFAULT 0,
+  daily_budget NUMERIC DEFAULT 0,
+  daily_spend NUMERIC DEFAULT 0,
+  last_pacing_reset TIMESTAMPTZ DEFAULT now(),
+  start_date TIMESTAMPTZ,
+  end_date TIMESTAMPTZ,
+  frequency_cap INTEGER DEFAULT 0, -- 0 means unlimited
+  priority_weight INTEGER DEFAULT 1,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Ad Units (Creatives)
+CREATE TABLE IF NOT EXISTS ad_units (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id UUID REFERENCES ad_campaigns.id ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('banner', 'video_preroll', 'native_feed')),
+  content_url TEXT NOT NULL,
+  destination_url TEXT NOT NULL,
+  alt_text TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Ad Targeting
+CREATE TABLE IF NOT EXISTS ad_targeting (
+  campaign_id UUID PRIMARY KEY REFERENCES ad_campaigns(id) ON DELETE CASCADE,
+  geo_countries TEXT[] DEFAULT '{}',
+  device_types TEXT[] DEFAULT '{}',
+  categories TEXT[] DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Ad Logs (Impressions & Clicks)
+CREATE TABLE IF NOT EXISTS ad_logs (
+  id BIGSERIAL PRIMARY KEY,
+  ad_unit_id UUID REFERENCES ad_units(id) ON DELETE CASCADE,
+  creator_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  user_id UUID, -- Optional, for non-logged-in users
+  event_type TEXT CHECK (event_type IN ('impression', 'click')),
+  ip_address TEXT,
+  user_agent TEXT,
+  geo_country TEXT,
+  device_type TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_ad_campaigns_status ON ad_campaigns(status);
+CREATE INDEX IF NOT EXISTS idx_ad_campaigns_advertiser ON ad_campaigns(advertiser_id);
+CREATE INDEX IF NOT EXISTS idx_ad_logs_ad_unit ON ad_logs(ad_unit_id);
+CREATE INDEX IF NOT EXISTS idx_ad_logs_created_at ON ad_logs(created_at);
+
+-- ═══ Creator Earnings ═══
+CREATE TABLE IF NOT EXISTS creator_earnings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  balance_total NUMERIC DEFAULT 0,
+  balance_pending NUMERIC DEFAULT 0,
+  revenue_ads NUMERIC DEFAULT 0,
+  revenue_subscriptions NUMERIC DEFAULT 0,
+  revenue_tips NUMERIC DEFAULT 0,
+  currency TEXT DEFAULT 'USD',
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ═══ Payment Transactions ═══
+CREATE TABLE IF NOT EXISTS payment_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  amount NUMERIC NOT NULL,
+  currency TEXT DEFAULT 'USD',
+  status TEXT DEFAULT 'pending', -- pending, success, failed, refunded
+  provider TEXT, -- paystack, paypal, stripe
+  target_type TEXT, -- subscription, tip, ad_budget
+  target_id UUID,
+  transaction_ref TEXT UNIQUE,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ═══ Payout History ═══
+CREATE TABLE IF NOT EXISTS payout_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  amount NUMERIC NOT NULL,
+  currency TEXT DEFAULT 'USD',
+  status TEXT DEFAULT 'pending', -- pending, processing, paid, failed
+  payout_method TEXT,
+  payout_details JSONB,
+  processed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ═══ More Indexes ═══
+CREATE INDEX IF NOT EXISTS idx_creator_earnings_creator ON creator_earnings(creator_id);
+CREATE INDEX IF NOT EXISTS idx_payment_transactions_user ON payment_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_payment_transactions_ref ON payment_transactions(transaction_ref);
+CREATE INDEX IF NOT EXISTS idx_payout_history_creator ON payout_history(creator_id);
+-- ═══ Monetization Applications ═══
+CREATE TABLE IF NOT EXISTS monetization_applications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'pending', -- pending, approved, rejected
+  notes TEXT,
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ═══ Comment Reports ═══
+CREATE TABLE IF NOT EXISTS comment_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  comment_id UUID REFERENCES film_comments(id) ON DELETE CASCADE,
+  reported_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  reason TEXT NOT NULL, -- spam, harassment, hate_speech, other
+  status TEXT DEFAULT 'pending', -- pending, reviewed, resolved, dismissed
+  resolved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ═══ Moderator Actions ═══
+CREATE TABLE IF NOT EXISTS moderator_actions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  moderator_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  action_type TEXT NOT NULL, -- delete_comment, ban_user, shadowban, warn
+  target_id UUID NOT NULL,
+  target_type TEXT NOT NULL, -- comment, user, film
+  reason TEXT,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ═══ Indexes for new tables ═══
+CREATE INDEX IF NOT EXISTS idx_monetization_apps_user ON monetization_applications(user_id);
+CREATE INDEX IF NOT EXISTS idx_comment_reports_comment ON comment_reports(comment_id);
+CREATE INDEX IF NOT EXISTS idx_moderator_actions_moderator ON moderator_actions(moderator_id);
+
+-- ─── ENGAGEMENT & ML RECOMMENDATIONS ───────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS engagement_metrics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  content_id UUID NOT NULL, -- Generic content ID (film or user upload)
+  content_type TEXT NOT NULL, -- 'film' or 'user_content'
+  event_type TEXT NOT NULL, -- 'view', 'watch_time', 'like', 'share', 'complete'
+  value NUMERIC DEFAULT 0, -- Generic value (e.g., watch time in seconds)
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS recommendation_scores (
+  user_id UUID REFERENCES users(id),
+  content_id UUID NOT NULL,
+  content_type TEXT NOT NULL,
+  score NUMERIC DEFAULT 0,
+  last_updated TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (user_id, content_id, content_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_engagement_content ON engagement_metrics(content_id, content_type);
+CREATE INDEX IF NOT EXISTS idx_engagement_user ON engagement_metrics(user_id);
+CREATE INDEX IF NOT EXISTS idx_rec_scores_user ON recommendation_scores(user_id, score DESC);
+
+-- Trending Velocity Calculation
+CREATE OR REPLACE FUNCTION calculate_trending_velocity(cid UUID, ctype TEXT)
+RETURNS NUMERIC AS $$
+DECLARE
+  velocity NUMERIC;
+BEGIN
+  SELECT COUNT(*) INTO velocity
+  FROM engagement_metrics
+  WHERE content_id = cid 
+    AND content_type = ctype
+    AND created_at > now() - INTERVAL '24 hours';
+  RETURN velocity;
+END;
+$$ LANGUAGE plpgsql;

@@ -1,6 +1,6 @@
 /**
  * Multi-Provider AI Video Generation Service
- * Supports: Gemini Veo (primary), Seedance via Unifically (fallback 1), Leonardo AI (fallback 2)
+ * Supports: Gemini Veo (primary), Leonardo AI (fallback)
  * Automatically falls through to the next provider on failure.
  */
 
@@ -159,7 +159,7 @@ export async function generateVideo(
     if (providers.length === 0) {
         return {
             success: false,
-            error: 'No AI API keys configured. Add VITE_GEMINI_API_KEY, VITE_UNIFICALLY_API_KEY, or VITE_LEONARDO_API_KEY to .env.local',
+            error: 'No AI API keys configured. Add VITE_GEMINI_API_KEY or VITE_LEONARDO_API_KEY to .env.local',
         };
     }
 

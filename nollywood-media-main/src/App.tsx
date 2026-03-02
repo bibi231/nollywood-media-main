@@ -48,8 +48,6 @@ const Music = lazy(() => import("./pages/Music"));
 const ContentTypePage = lazy(() => import("./pages/ContentTypePage"));
 const Catalog = lazy(() => import("./components/Catalog"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin").then(m => ({ default: m.AdminLogin })));
-const ModerationPortal = lazy(() => import("./pages/admin/ModerationPortal"));
-const AnalyticsPortal = lazy(() => import("./pages/admin/AnalyticsPortal"));
 const AccountLayout = lazy(() => import("./pages/account/AccountLayout").then(m => ({ default: m.AccountLayout })));
 const Profile = lazy(() => import("./pages/account/Profile").then(m => ({ default: m.Profile })));
 const WatchHistory = lazy(() => import("./pages/account/WatchHistory").then(m => ({ default: m.WatchHistory })));
@@ -88,7 +86,6 @@ const AdminModeration = lazy(() => import("./pages/admin/Moderation").then(m => 
 const AdminCompliance = lazy(() => import("./pages/admin/Compliance").then(m => ({ default: m.AdminCompliance })));
 const AdminAnalytics = lazy(() => import("./pages/admin/Analytics").then(m => ({ default: m.AdminAnalytics })));
 const AdminSettings = lazy(() => import("./pages/admin/Settings").then(m => ({ default: m.AdminSettings })));
-const AdminUpload = lazy(() => import("./pages/admin/Upload").then(m => ({ default: m.AdminUpload })));
 const AdminUserUploads = lazy(() => import("./pages/admin/UserUploads").then(m => ({ default: m.UserUploads })));
 const Press = lazy(() => import("./pages/Press"));
 const Blog = lazy(() => import("./pages/Blog"));
@@ -102,8 +99,16 @@ const CreatorProfile = lazy(() => import("./pages/CreatorProfile"));
 const Community = lazy(() => import("./pages/Community"));
 const AccountPlaylists = lazy(() => import("./pages/account/Playlists").then(m => ({ default: m.Playlists })));
 const Clips = lazy(() => import("./pages/Clips"));
+const AdminAdsManager = lazy(() => import("./pages/admin/AdsManager").then(m => ({ default: m.AdminAdsManager })));
 const Subscriptions = lazy(() => import("./pages/feed/Subscriptions"));
 const ActivityFeed = lazy(() => import("./pages/account/ActivityFeed"));
+const AdvertiserLayout = lazy(() => import("./pages/advertiser/AdvertiserLayout").then(m => ({ default: m.AdvertiserLayout })));
+const AdvertiserDashboard = lazy(() => import("./pages/advertiser/Dashboard").then(m => ({ default: m.AdvertiserDashboard })));
+const AdvertiserCampaigns = lazy(() => import("./pages/advertiser/Campaigns").then(m => ({ default: m.AdvertiserCampaigns })));
+const CreateCampaign = lazy(() => import("./pages/advertiser/CreateCampaign").then(m => ({ default: m.CreateCampaign })));
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage").then(m => ({ default: m.CheckoutPage })));
+const ModeratorLayout = lazy(() => import("./pages/moderator/ModeratorLayout").then(m => ({ default: m.ModeratorLayout })));
+const ModeratorDashboard = lazy(() => import("./pages/moderator/ModeratorDashboard").then(m => ({ default: m.ModeratorDashboard })));
 
 
 const LoadingFallback = () => (
@@ -136,15 +141,9 @@ export default function App() {
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/admin/analytics" element={
-                    <ProtectedRoute requireAdmin>
-                      <AnalyticsPortal />
-                    </ProtectedRoute>
-                  } />
-
-                  <Route path="/admin/moderation" element={
-                    <ProtectedRoute requireAdmin>
-                      <ModerationPortal />
+                  <Route path="/checkout" element={
+                    <ProtectedRoute>
+                      <CheckoutPage />
                     </ProtectedRoute>
                   } />
 
@@ -184,9 +183,9 @@ export default function App() {
                     <Route path="users" element={<AdminUsers />} />
                     <Route path="moderation" element={<AdminModeration />} />
                     <Route path="compliance" element={<AdminCompliance />} />
-                    <Route path="analytics" element={<AdminAnalytics />} />
-                    <Route path="upload" element={<AdminUpload />} />
                     <Route path="user-uploads" element={<AdminUserUploads />} />
+                    <Route path="analytics" element={<AdminAnalytics />} />
+                    <Route path="ads" element={<AdminAdsManager />} />
                     <Route path="settings" element={<AdminSettings />} />
                   </Route>
                   <Route path="/press" element={<Press />} />
@@ -219,6 +218,16 @@ export default function App() {
                     <Route path="playlists" element={<AccountPlaylists />} />
                   </Route>
 
+                  <Route path="/advertiser" element={
+                    <ProtectedRoute>
+                      <AdvertiserLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={<AdvertiserDashboard />} />
+                    <Route path="campaigns" element={<AdvertiserCampaigns />} />
+                    <Route path="campaigns/new" element={<CreateCampaign />} />
+                  </Route>
+
                   <Route path="*" element={
                     <div className="flex min-h-screen flex-col bg-white dark:bg-gray-900">
                       <Header onMenuClick={() => setSidebarOpen(true)} />
@@ -226,6 +235,11 @@ export default function App() {
                       <div className="flex-1">
                         <Routes>
                           <Route path="/" element={<Home />} />
+                          <Route path="/moderator" element={<ProtectedRoute requireModerator><ModeratorLayout /></ProtectedRoute>}>
+                            <Route index element={<Navigate to="dashboard" replace />} />
+                            <Route path="dashboard" element={<ModeratorDashboard />} />
+                            <Route path="reports" element={<AdminModeration />} /> {/* Reusing the reporting UI for now */}
+                          </Route>
                           <Route path="/catalog" element={<Catalog />} />
                           <Route path="/genre/:genre" element={<GenrePage />} />
                           <Route path="/region/:name" element={<RegionPage />} />

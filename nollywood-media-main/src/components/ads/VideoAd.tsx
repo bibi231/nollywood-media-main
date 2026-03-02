@@ -1,185 +1,131 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { useAdsConfig } from '../../hooks/useAdsConfig';
+import { useEffect, useState, useRef } from 'react';
 
-interface VideoAdProps {
-    /** Pre-roll or post-roll */
-    type: 'pre' | 'post';
-    /** Callback when ad completes or is skipped */
-    onAdComplete: () => void;
-    /** Callback if ad fails to load */
-    onAdError?: () => void;
+interface AdUnit {
+    id: string;
+    campaign_id: string;
+    content_url: string;
+    destination_url: string;
+    alt_text: string;
+    type: string;
 }
 
-/**
- * IMA SDK video ad wrapper.
- * Shows a skippable pre-roll or post-roll ad before/after content.
- * Falls back gracefully when IMA credentials aren't set.
- */
-export function VideoAd({ type, onAdComplete, onAdError }: VideoAdProps) {
-    const { imaTagUrl, showPlaceholders } = useAdsConfig();
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [countdown, setCountdown] = useState(5);
+interface VideoAdProps {
+    category?: string;
+    onComplete: () => void;
+}
+
+export function VideoAd({ category, onComplete }: VideoAdProps) {
+    const [ad, setAd] = useState<AdUnit | null>(null);
+    const [loading, setLoading] = useState(true);
     const [canSkip, setCanSkip] = useState(false);
-    const timerRef = useRef<ReturnType<typeof setInterval>>();
+    const [skipTimer, setSkipTimer] = useState(5);
+    const videoRef = useRef<HTMLVideoElement>(null);
 
-    const handleSkip = useCallback(() => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        onAdComplete();
-    }, [onAdComplete]);
-
-    // If no IMA tag, skip immediately
     useEffect(() => {
-        if (!imaTagUrl && !showPlaceholders) {
-            onAdComplete();
-        }
-    }, [imaTagUrl, showPlaceholders, onAdComplete]);
+        fetchAd();
+    }, [category]);
 
-    // Dev placeholder countdown
     useEffect(() => {
-        if (!showPlaceholders || imaTagUrl) return;
-
-        timerRef.current = setInterval(() => {
-            setCountdown((prev) => {
-                if (prev <= 1) {
-                    setCanSkip(true);
-                    if (timerRef.current) clearInterval(timerRef.current);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-
-        return () => {
-            if (timerRef.current) clearInterval(timerRef.current);
-        };
-    }, [showPlaceholders, imaTagUrl]);
-
-    // Real IMA SDK integration
-    useEffect(() => {
-        if (!imaTagUrl || !containerRef.current) return;
-
-        // Load IMA SDK script dynamically
-        const scriptId = 'ima-sdk-script';
-        if (!document.getElementById(scriptId)) {
-            const script = document.createElement('script');
-            script.id = scriptId;
-            script.src = 'https://imasdk.googleapis.com/js/sdkloader/ima3.js';
-            script.async = true;
-            script.onload = () => initIMA();
-            script.onerror = () => {
-                console.error('Failed to load IMA SDK');
-                onAdError?.();
-                onAdComplete();
-            };
-            document.head.appendChild(script);
-        } else {
-            initIMA();
-        }
-
-        function initIMA() {
-            try {
-                const google = (window as any).google;
-                if (!google?.ima) {
-                    onAdComplete();
-                    return;
-                }
-
-                const adDisplayContainer = new google.ima.AdDisplayContainer(
-                    containerRef.current!
-                );
-                adDisplayContainer.initialize();
-
-                const adsLoader = new google.ima.AdsLoader(adDisplayContainer);
-
-                adsLoader.addEventListener(
-                    google.ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,
-                    (event: any) => {
-                        const adsManager = event.getAdsManager(containerRef.current!);
-                        adsManager.addEventListener(
-                            google.ima.AdEvent.Type.COMPLETE,
-                            () => onAdComplete()
-                        );
-                        adsManager.addEventListener(
-                            google.ima.AdEvent.Type.SKIPPED,
-                            () => onAdComplete()
-                        );
-                        adsManager.addEventListener(
-                            google.ima.AdErrorEvent.Type.AD_ERROR,
-                            () => {
-                                onAdError?.();
-                                onAdComplete();
-                            }
-                        );
-
-                        try {
-                            adsManager.init('100%', '100%', google.ima.ViewMode.NORMAL);
-                            adsManager.start();
-                        } catch {
-                            onAdComplete();
-                        }
+        if (ad && !canSkip) {
+            const interval = setInterval(() => {
+                setSkipTimer((prev) => {
+                    if (prev <= 1) {
+                        setCanSkip(true);
+                        clearInterval(interval);
+                        return 0;
                     }
-                );
+                    return prev - 1;
+                });
+            }, 1000);
+            return () => clearInterval(interval);
+        }
+    }, [ad, canSkip]);
 
-                adsLoader.addEventListener(
-                    google.ima.AdErrorEvent.Type.AD_ERROR,
-                    () => {
-                        onAdError?.();
-                        onAdComplete();
-                    }
-                );
+    const fetchAd = async () => {
+        try {
+            const query = category ? `&category=${encodeURIComponent(category)}` : '';
+            const res = await fetch(`/api/ads/serve?type=video_preroll${query}`);
+            const result = await res.json();
 
-                const adsRequest = new google.ima.AdsRequest();
-                adsRequest.adTagUrl = imaTagUrl;
-
-                adsLoader.requestAds(adsRequest);
-            } catch {
-                onAdComplete();
+            if (result.data) {
+                setAd(result.data);
+                logEvent(result.data.id, result.data.campaign_id, 'impression');
+            } else {
+                onComplete(); // Skip if no ad
             }
+        } catch (err) {
+            console.error('Failed to load video ad:', err);
+            onComplete();
+        } finally {
+            setLoading(false);
         }
-    }, [imaTagUrl, onAdComplete, onAdError]);
+    };
 
-    // Nothing to show in production without credentials
-    if (!imaTagUrl && !showPlaceholders) return null;
+    const logEvent = async (adUnitId: string, campaignId: string, eventType: 'impression' | 'click') => {
+        try {
+            await fetch('/api/ads/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ad_unit_id: adUnitId,
+                    campaign_id: campaignId,
+                    event_type: eventType
+                })
+            });
+        } catch (err) {
+            console.error('Failed to log ad event:', err);
+        }
+    };
 
-    // Dev placeholder
-    if (showPlaceholders && !imaTagUrl) {
-        return (
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black">
-                <div className="text-center">
-                    <div className="text-gray-400 text-sm font-mono mb-2">
-                        📹 {type === 'pre' ? 'Pre-Roll' : 'Post-Roll'} Video Ad
-                    </div>
-                    <div className="text-gray-500 text-xs mb-6">
-                        IMA SDK placeholder — set VITE_IMA_AD_TAG_URL to activate
-                    </div>
+    const handleClick = () => {
+        if (ad) {
+            logEvent(ad.id, ad.campaign_id, 'click');
+            window.open(ad.destination_url, '_blank', 'noopener,noreferrer');
+        }
+    };
 
-                    <div className="w-64 h-36 mx-auto mb-6 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center">
-                        <div className="text-4xl opacity-30">▶️</div>
-                    </div>
+    if (loading) return null;
+    if (!ad) return null;
 
-                    {canSkip ? (
-                        <button
-                            onClick={handleSkip}
-                            className="px-6 py-2 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 transition-colors"
-                        >
-                            Skip Ad →
-                        </button>
-                    ) : (
-                        <div className="text-gray-400 text-sm">
-                            Skip in {countdown}s...
-                        </div>
-                    )}
+    return (
+        <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl">
+            <video
+                ref={videoRef}
+                src={ad.content_url}
+                autoPlay
+                playsInline
+                onEnded={onComplete}
+                className="w-full h-full object-contain"
+            />
+
+            {/* Overlay controls */}
+            <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-none">
+                <div className="flex justify-between items-start">
+                    <span className="bg-black/60 backdrop-blur-md text-[10px] font-bold uppercase tracking-widest text-white px-3 py-1.5 rounded-lg border border-white/10">
+                        Sponsored Ad
+                    </span>
+
+                    <button
+                        onClick={onComplete}
+                        disabled={!canSkip}
+                        className={`pointer-events-auto px-6 py-2.5 rounded-xl font-bold transition-all border ${canSkip
+                                ? 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                                : 'bg-black/40 text-gray-400 border-transparent'
+                            }`}
+                    >
+                        {canSkip ? 'Skip Ad' : `Skip in ${skipTimer}s`}
+                    </button>
+                </div>
+
+                <div className="flex justify-between items-end">
+                    <button
+                        onClick={handleClick}
+                        className="pointer-events-auto bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-red-600/30 transition-all active:scale-95"
+                    >
+                        Visit Website
+                    </button>
                 </div>
             </div>
-        );
-    }
-
-    // Real IMA SDK container
-    return (
-        <div
-            ref={containerRef}
-            className="absolute inset-0 z-50 bg-black"
-            style={{ width: '100%', height: '100%' }}
-        />
+        </div>
     );
 }

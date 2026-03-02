@@ -1,82 +1,119 @@
-import { useEffect, useRef } from 'react';
-import { useAdsConfig } from '../../hooks/useAdsConfig';
+import { useEffect, useState } from 'react';
+import { ExternalLink } from 'lucide-react';
 
-type AdFormat = 'leaderboard' | 'rectangle' | 'sidebar' | 'responsive';
-
-interface AdBannerProps {
-    /** AdSense ad slot ID */
-    slot?: string;
-    /** Display format */
-    format?: AdFormat;
-    /** Additional CSS classes */
-    className?: string;
+interface AdUnit {
+    id: string;
+    campaign_id: string;
+    content_url: string;
+    destination_url: string;
+    alt_text: string;
+    type: string;
 }
 
-const FORMAT_STYLES: Record<AdFormat, { width: string; height: string; label: string }> = {
-    leaderboard: { width: '100%', height: '90px', label: '728×90 Leaderboard' },
-    rectangle: { width: '336px', height: '280px', label: '336×280 Rectangle' },
-    sidebar: { width: '300px', height: '250px', label: '300×250 Sidebar' },
-    responsive: { width: '100%', height: '100px', label: 'Responsive' },
-};
-
-declare global {
-    interface Window {
-        adsbygoogle: Array<Record<string, unknown>>;
-    }
-}
-
-export function AdBanner({ slot, format = 'responsive', className = '' }: AdBannerProps) {
-    const { adsEnabled, pubId, showPlaceholders } = useAdsConfig();
-    const adRef = useRef<HTMLModElement>(null);
-    const pushed = useRef(false);
+export function AdBanner({ category, className, format }: { category?: string, className?: string, format?: string }) {
+    // format is passed from AdSpace (e.g., 'leaderboard', 'rectangle')
+    // We could use it to filter ads by type if we wanted
+    const [ad, setAd] = useState<AdUnit | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [isAdSenseFallback, setIsAdSenseFallback] = useState(false);
 
     useEffect(() => {
-        if (!adsEnabled || !slot || pushed.current) return;
+        const loadAd = async () => {
+            try {
+                setLoading(true);
+                setIsAdSenseFallback(false); // Reset fallback state
+                setAd(null); // Clear previous ad
 
+                const response = await fetch(`/api/ads/serve?type=${format || 'banner'}&category=${category || ''}`);
+                const result = await response.json();
+
+                if (result.data) {
+                    setAd(result.data);
+                } else {
+                    console.log('No native ads found, falling back to Google AdSense');
+                    setIsAdSenseFallback(true);
+                }
+            } catch (error) {
+                console.error('Error fetching native ad:', error);
+                setIsAdSenseFallback(true);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadAd();
+    }, [category, format]);
+
+    const logEvent = async (adUnitId: string, campaignId: string, eventType: 'impression' | 'click') => {
         try {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-            pushed.current = true;
+            await fetch('/api/ads/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ad_unit_id: adUnitId,
+                    campaign_id: campaignId,
+                    event_type: eventType
+                })
+            });
         } catch (err) {
-            console.error('AdSense push error:', err);
+            console.error('Failed to log ad event:', err);
         }
-    }, [adsEnabled, slot]);
+    };
 
-    const style = FORMAT_STYLES[format];
+    const handleClick = () => {
+        if (ad) {
+            logEvent(ad.id, ad.campaign_id, 'click');
+            window.open(ad.destination_url, '_blank', 'noopener,noreferrer');
+        }
+    };
 
-    // Production without credentials: render nothing
-    if (!adsEnabled && !showPlaceholders) return null;
+    if (loading) return (
+        <div className={`animate-pulse bg-slate-900/40 border border-white/5 rounded-xl ${className}`}>
+            <div className="h-full w-full flex items-center justify-center text-[10px] text-slate-700 font-bold uppercase tracking-widest min-h-[100px]">
+                Loading Ad...
+            </div>
+        </div>
+    );
 
-    // Dev mode placeholder
-    if (showPlaceholders) {
+    if (isAdSenseFallback || !ad) {
         return (
-            <div
-                className={`flex items-center justify-center border-2 border-dashed border-gray-600 rounded-lg bg-gray-800/30 text-gray-500 text-xs font-mono select-none ${className}`}
-                style={{ width: style.width, height: style.height, maxWidth: '100%' }}
-            >
-                <div className="text-center">
-                    <div className="mb-1 opacity-60">📢 Ad Placeholder</div>
-                    <div>{style.label}</div>
+            <div className={`ad-sense-container flex items-center justify-center bg-black/20 border border-white/5 overflow-hidden rounded-xl relative min-h-[100px] ${className || ''}`}>
+                <div className="text-[8px] text-slate-500 font-bold uppercase tracking-widest absolute top-1 right-2">Sponsored (Google)</div>
+                <div className="p-4 text-center">
+                    <p className="text-xs text-slate-400 font-bold italic">Google Adsense Backfill</p>
+                    <p className="text-[10px] text-slate-600">Category: {category || 'General'}</p>
                 </div>
             </div>
         );
     }
 
-    // Real AdSense unit
     return (
-        <div className={className}>
-            <ins
-                ref={adRef}
-                className="adsbygoogle"
-                style={{
-                    display: 'block',
-                    width: format === 'responsive' ? '100%' : style.width,
-                    height: format === 'responsive' ? 'auto' : style.height,
-                }}
-                data-ad-client={pubId}
-                data-ad-slot={slot}
-                data-ad-format={format === 'responsive' ? 'auto' : undefined}
-                data-full-width-responsive={format === 'responsive' ? 'true' : undefined}
-            />
+        <div className={`w-full bg-gray-50 dark:bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 group relative ${className || ''}`}>
+            <button
+                onClick={handleClick}
+                className="w-full flex flex-col md:flex-row items-center gap-6 p-4 md:p-6 text-left"
+            >
+                <div className="w-full md:w-48 h-24 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden flex-shrink-0">
+                    <img
+                        src={ad.content_url}
+                        alt={ad.alt_text}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                </div>
+
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded">Sponsored</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2 line-clamp-1">{ad.alt_text}</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">Click to learn more about this offer from our partner.</p>
+                </div>
+
+                <div className="hidden md:flex items-center gap-2 text-gray-400 group-hover:text-red-600 transition-colors">
+                    <span className="text-xs font-bold uppercase tracking-widest">Visit Site</span>
+                    <ExternalLink className="w-4 h-4" />
+                </div>
+            </button>
         </div>
     );
 }
