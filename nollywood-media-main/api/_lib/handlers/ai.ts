@@ -45,7 +45,7 @@ async function checkServerQuota(userId: string) {
     } catch { return { allowed: true, remaining: limit, limit }; }
 }
 
-async function fetchWithTimeout(url: string, opts: RequestInit, timeoutMs = 30000) {
+async function fetchWithTimeout(url: string, opts: RequestInit = {}, timeoutMs = 30000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try { return await fetch(url, { ...opts, signal: controller.signal }); }
